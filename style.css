@@ -40,14 +40,14 @@
     }
     .statusbar {
         opacity: 0;
-        line-height: 30px;
-        transform: translateY(30px);
+        transform: translateY(100px);
         transition: opacity 0.4s ease, transform 0.4s ease;
+        pointer-events: none;
     }
     .statusbar-visible {
         opacity: 1;
-        line-height: 30px;
-        transform: translateY(-10px);
+        transform: translateY(0);
+        pointer-events: auto;
     }
     .history-panel {
         width: 380px;
@@ -313,13 +313,184 @@ body {
 
 /* 编辑器聚光灯模式 */
 .editor-spotlight-mode {
-    color: rgba(226, 232, 240, 0.9) !important;
+    color: rgba(226, 232, 240, 0.95) !important;
     caret-color: #38bdf8;
+    text-shadow: 0 0 10px rgba(56, 189, 248, 0.3), 0 0 20px rgba(56, 189, 248, 0.1);
 }
 
 .editor-spotlight-mode::selection {
-    background: rgba(56, 189, 248, 0.3);
+    background: rgba(56, 189, 248, 0.4);
     color: #fff;
+    text-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+}
+
+.editor-spotlight-mode:focus {
+    text-shadow: 0 0 15px rgba(56, 189, 248, 0.5), 0 0 30px rgba(56, 189, 248, 0.2);
+}
+
+/* HUD装饰元素 */
+.hud-corner {
+    position: fixed;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.hud-corner-tl {
+    top: 20px;
+    left: 20px;
+}
+
+.hud-corner-tr {
+    top: 20px;
+    right: 20px;
+}
+
+.hud-corner-bl {
+    bottom: 20px;
+    left: 20px;
+}
+
+.hud-corner-br {
+    bottom: 20px;
+    right: 20px;
+}
+
+.hud-line {
+    position: absolute;
+    background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.6), transparent);
+}
+
+.hud-line-h {
+    width: 60px;
+    height: 2px;
+}
+
+.hud-line-v {
+    width: 2px;
+    height: 60px;
+    background: linear-gradient(180deg, transparent, rgba(56, 189, 248, 0.6), transparent);
+}
+
+/* 扫描线效果 */
+.scanline-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 1;
+    background-image: 
+        linear-gradient(rgba(56, 189, 248, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(56, 189, 248, 0.03) 1px, transparent 1px);
+    background-size: 100% 4px, 4px 100%;
+    opacity: 0.5;
+}
+
+/* 网格背景增强 */
+.grid-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 0;
+    background-image: 
+        linear-gradient(rgba(56, 189, 248, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(56, 189, 248, 0.05) 1px, transparent 1px);
+    background-size: 50px 50px;
+}
+
+/* 按钮科技增强 */
+.btn-tech {
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-tech::after {
+    content: '';
+    position: absolute;
+    top: -2px;
+    left: -2px;
+    right: -2px;
+    bottom: -2px;
+    background: linear-gradient(45deg, transparent 45%, rgba(56, 189, 248, 0.3) 50%, transparent 55%);
+    background-size: 300% 300%;
+    animation: btn-glow 3s ease infinite;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    border-radius: inherit;
+}
+
+.btn-tech:hover::after {
+    opacity: 1;
+}
+
+@keyframes btn-glow {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+}
+
+/* 面板科技边框 */
+.panel-tech {
+    position: relative;
+}
+
+.panel-tech::before {
+    content: '';
+    position: absolute;
+    top: -1px;
+    left: -1px;
+    right: -1px;
+    bottom: -1px;
+    background: linear-gradient(
+        135deg,
+        rgba(56, 189, 248, 0.5) 0%,
+        rgba(168, 85, 247, 0.3) 25%,
+        transparent 50%,
+        rgba(56, 189, 248, 0.3) 75%,
+        rgba(168, 85, 247, 0.5) 100%
+    );
+    background-size: 200% 200%;
+    animation: border-flow 4s ease infinite;
+    pointer-events: none;
+    z-index: -1;
+    border-radius: inherit;
+    opacity: 0.5;
+}
+
+/* 发光脉冲 */
+.pulse-ring {
+    animation: pulse-ring 2s ease-out infinite;
+}
+
+@keyframes pulse-ring {
+    0% {
+        transform: scale(0.8);
+        opacity: 0.8;
+    }
+    100% {
+        transform: scale(1.5);
+        opacity: 0;
+    }
+}
+
+/* 浮动粒子 */
+.particle {
+    position: fixed;
+    pointer-events: none;
+    border-radius: 50%;
+    background: rgba(56, 189, 248, 0.4);
+    animation: float-particle 10s ease-in-out infinite;
+}
+
+@keyframes float-particle {
+    0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { transform: translateY(-100vh) rotate(720deg); opacity: 0; }
 }
 
 #editor {
