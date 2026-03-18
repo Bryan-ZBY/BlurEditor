@@ -33,16 +33,10 @@
     <!-- 浮动粒子 -->
     <div v-for="i in 8" :key="i" class="particle" :style="getParticleStyle(i)"></div>
 
-    <!-- 聚光灯效果层 -->
-    <div 
-      class="fixed inset-0 pointer-events-none z-0 transition-all duration-100"
-      :style="spotlightStyle"
-    ></div>
-    
     <!-- 发光圆圈跟随鼠标 - 多层 -->
     <div
       v-show="isMouseInEditor"
-      class="fixed pointer-events-none z-0"
+      class="fixed pointer-events-none z-[5]"
       :style="glowCircleStyle"
     >
       <div class="absolute w-48 h-48 rounded-full bg-cyan-500/10 blur-3xl" style="left: -96px; top: -96px;"></div>
@@ -59,9 +53,9 @@
       <textarea
         v-model="content"
         ref="editorRef"
-        class="fullscreen bg-transparent text-editor-text font-mono text-sm md:text-base p-6 md:p-10 custom-scrollbar relative z-10 editor-spotlight-mode"
+        class="fullscreen bg-cover bg-right-bottom bg-no-repeat text-editor-text font-mono text-sm md:text-base p-6 md:p-10 custom-scrollbar relative z-[15] editor-spotlight-mode"
         :class="{ 'blur-effect': isBlurred, 'no-blur': !isBlurred }"
-        :style="editorStyle"
+        :style="editorStyleWithBg"
         placeholder="点击开始输入内容... (双击ESC键退出编辑)"
         @keydown="handleKeydown"
         @input="handleInput"
@@ -243,18 +237,18 @@
         </button>
         
         <!-- 收藏按钮 -->
-        <button id="show-favorites" @click="openFavoritesPanel" class="btn-tech group relative px-5 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-purple-500/20 to-fuchsia-500/20 hover:from-purple-500/40 hover:to-fuchsia-500/40 border border-purple-400/40 hover:border-purple-300/60 text-purple-100 transition-all duration-300 flex items-center gap-2 shadow-lg shadow-purple-500/20 hover:shadow-purple-500/40 overflow-hidden">
+        <button id="show-favorites" @click="openFavoritesPanel" class="btn-tech group relative px-5 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/40 hover:to-orange-500/40 border border-amber-400/40 hover:border-amber-300/60 text-amber-100 transition-all duration-300 flex items-center gap-2 shadow-lg shadow-amber-500/20 hover:shadow-amber-500/40 overflow-hidden">
           <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
           <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 group-hover:scale-110 transition-transform" fill="currentColor" viewBox="0 0 24 24">
             <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
           </svg>
           <span>收藏</span>
-          <span v-if="favorites.length > 0" class="px-1.5 py-0.5 text-[10px] rounded-md bg-purple-400/30 text-purple-200">{{ favorites.length }}</span>
+          <span v-if="favorites.length > 0" class="px-1.5 py-0.5 text-[10px] rounded-md bg-amber-400/30 text-amber-200">{{ favorites.length }}</span>
         </button>
       </div>
       
       <!-- 右侧装饰线 -->
-      <div class="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-12 bg-gradient-to-b from-transparent via-purple-400 to-transparent opacity-50"></div>
+      <div class="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-12 bg-gradient-to-b from-transparent via-amber-400 to-transparent opacity-50"></div>
     </div>
 
     <!-- 侧边面板 - 科技风 -->
@@ -323,16 +317,16 @@
         <button
           id="favorites-tab"
           class="flex-1 py-3 px-3 rounded-xl text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2 border whitespace-nowrap"
-          :class="activeTab === 'favorites' ? 'bg-gradient-to-r from-purple-500/30 to-fuchsia-500/30 text-purple-100 border-purple-400/50 shadow-lg shadow-purple-500/20' : 'bg-white/5 text-purple-400/70 hover:text-purple-300 hover:bg-white/10 border-purple-500/20'"
+          :class="activeTab === 'favorites' ? 'bg-gradient-to-r from-amber-500/30 to-orange-500/30 text-amber-100 border-amber-400/50 shadow-lg shadow-amber-500/20' : 'bg-white/5 text-amber-400/70 hover:text-amber-300 hover:bg-white/10 border-amber-500/20'"
           @click="activeTab = 'favorites'"
         >
-          <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-400/40 to-fuchsia-400/30 flex items-center justify-center shrink-0">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-purple-200" fill="currentColor" viewBox="0 0 24 24">
+          <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400/40 to-orange-400/30 flex items-center justify-center shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-amber-200" fill="currentColor" viewBox="0 0 24 24">
               <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
             </svg>
           </div>
           <span class="hidden sm:inline">收藏</span>
-          <span v-if="favorites.length > 0" class="px-2 py-0.5 text-xs rounded-full bg-purple-400/40 text-purple-100 border border-purple-400/30 shrink-0">{{ favorites.length }}</span>
+          <span v-if="favorites.length > 0" class="px-2 py-0.5 text-xs rounded-full bg-amber-400/40 text-amber-100 border border-amber-400/30 shrink-0">{{ favorites.length }}</span>
         </button>
       </div>
 
@@ -425,34 +419,34 @@
       <!-- 收藏列表 -->
       <div id="favorites-tab-content" class="tab-content h-[calc(100%-160px)]" :class="{ active: activeTab === 'favorites' }">
         <div id="favorite-list" class="p-4 space-y-3 custom-scrollbar h-full overflow-y-auto">
-          <div v-if="favorites.length === 0" class="flex flex-col items-center justify-center py-20 text-purple-400/50">
-            <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-purple-500/10 to-fuchsia-500/10 border border-purple-500/20 flex items-center justify-center mb-4 animate-float">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10 text-purple-400/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div v-if="favorites.length === 0" class="flex flex-col items-center justify-center py-20 text-amber-400/50">
+            <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-500/10 to-orange-500/10 border border-amber-500/20 flex items-center justify-center mb-4 animate-float">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-10 h-10 text-amber-400/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
               </svg>
             </div>
             <p class="text-sm font-medium">暂无收藏内容</p>
-            <p class="text-xs text-purple-400/40 mt-2">按 Ctrl+D 收藏当前内容</p>
+            <p class="text-xs text-amber-400/40 mt-2">按 Ctrl+D 收藏当前内容</p>
           </div>
           <div
             v-else
             v-for="(record, index) in favorites"
             :key="record.id"
-            class="group relative rounded-2xl cursor-pointer overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-purple-500/20"
+            class="group relative rounded-2xl cursor-pointer overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-amber-500/20"
             @click="showFavoriteModal(record)"
           >
-            <!-- 背景渐变 - 更浅紫色系 -->
-            <div class="absolute inset-0 bg-gradient-to-br from-purple-700/25 via-fuchsia-700/15 to-purple-800/30 border border-purple-300/25 group-hover:border-purple-400/40 rounded-2xl transition-all duration-300"></div>
+            <!-- 背景渐变 - 琥珀色系 -->
+            <div class="absolute inset-0 bg-gradient-to-br from-amber-700/25 via-orange-700/15 to-amber-800/30 border border-amber-300/25 group-hover:border-amber-400/40 rounded-2xl transition-all duration-300"></div>
 
             <!-- 左侧装饰条 -->
-            <div class="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-purple-400 via-fuchsia-400 to-purple-500 opacity-0 group-hover:opacity-100 transition-all duration-300 shadow-lg shadow-purple-500/50"></div>
+            <div class="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-amber-400 via-orange-400 to-amber-500 opacity-0 group-hover:opacity-100 transition-all duration-300 shadow-lg shadow-amber-500/50"></div>
 
             <!-- 顶部光效 -->
-            <div class="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-purple-400/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <div class="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-amber-400/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
 
             <!-- 角落装饰 -->
-            <div class="absolute top-2 right-2 w-2 h-2 border-t border-r border-purple-400/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-            <div class="absolute bottom-2 left-2 w-2 h-2 border-b border-l border-purple-400/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <div class="absolute top-2 right-2 w-2 h-2 border-t border-r border-amber-400/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <div class="absolute bottom-2 left-2 w-2 h-2 border-b border-l border-amber-400/30 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
 
             <div class="relative p-4">
               <div class="flex justify-between items-start gap-3">
@@ -460,13 +454,13 @@
                   <!-- 顶部信息行 -->
                   <div class="flex items-center justify-between mb-3">
                     <div class="flex items-center gap-3">
-                      <div class="flex items-center justify-center w-7 h-7 rounded-lg bg-gradient-to-br from-purple-400/30 to-fuchsia-400/20 border border-purple-400/40 shadow-lg shadow-purple-500/20">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-purple-200" fill="currentColor" viewBox="0 0 24 24">
+                      <div class="flex items-center justify-center w-7 h-7 rounded-lg bg-gradient-to-br from-amber-400/30 to-orange-400/20 border border-amber-400/40 shadow-lg shadow-amber-500/20">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-amber-200" fill="currentColor" viewBox="0 0 24 24">
                           <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                         </svg>
                       </div>
-                      <div class="flex items-center gap-1.5 text-xs text-purple-300/70">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-purple-400/60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <div class="flex items-center gap-1.5 text-xs text-amber-300/70">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 text-amber-400/60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                         <span>{{ record.date }}</span>
@@ -475,17 +469,17 @@
                   </div>
 
                   <!-- 内容预览 -->
-                  <div class="text-sm text-purple-100/95 line-clamp-2 leading-relaxed mb-3 pl-10">{{ truncateText(record.content) }}</div>
+                  <div class="text-sm text-amber-100/95 line-clamp-2 leading-relaxed mb-3 pl-10">{{ truncateText(record.content) }}</div>
 
                   <!-- 底部统计 -->
                   <div class="flex items-center gap-3 pl-10">
-                    <span class="flex items-center gap-1.5 text-[11px] text-purple-200 bg-purple-500/20 px-3 py-1.5 rounded-full border border-purple-400/30 shadow-sm shadow-purple-500/10">
+                    <span class="flex items-center gap-1.5 text-[11px] text-amber-200 bg-amber-500/20 px-3 py-1.5 rounded-full border border-amber-400/30 shadow-sm shadow-amber-500/10">
                       <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
                       {{ record.charCount }} 字符
                     </span>
-                    <span class="flex items-center gap-1.5 text-[11px] text-fuchsia-200 bg-fuchsia-500/20 px-3 py-1.5 rounded-full border border-fuchsia-400/30 shadow-sm shadow-fuchsia-500/10">
+                    <span class="flex items-center gap-1.5 text-[11px] text-orange-200 bg-orange-500/20 px-3 py-1.5 rounded-full border border-orange-400/30 shadow-sm shadow-orange-500/10">
                       <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
                       </svg>
@@ -496,7 +490,7 @@
 
                 <!-- 删除按钮 -->
                 <button
-                  class="delete-btn opacity-0 group-hover:opacity-100 w-8 h-8 flex items-center justify-center rounded-lg bg-purple-700/40 border border-red-500/30 hover:bg-red-500/20 hover:border-red-400/50 hover:text-red-300 text-purple-300/80 transition-all duration-200 hover:scale-110"
+                  class="delete-btn opacity-0 group-hover:opacity-100 w-8 h-8 flex items-center justify-center rounded-lg bg-amber-700/40 border border-red-500/30 hover:bg-red-500/20 hover:border-red-400/50 hover:text-red-300 text-amber-300/80 transition-all duration-200 hover:scale-110"
                   @click.stop="deleteFavorite(record.id)"
                   title="删除记录"
                 >
@@ -577,25 +571,25 @@
       :class="{ 'modal-visible': showFavoriteModalFlag }"
       @click.self="closeFavoriteModal"
     >
-      <div class="glass-tech rounded-2xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl shadow-purple-500/20 modal-content border border-purple-500/30">
-        <div class="flex justify-between items-center p-5 border-b border-purple-500/30 bg-gradient-to-r from-purple-500/10 to-fuchsia-500/10">
+      <div class="glass-tech rounded-2xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl shadow-amber-500/20 modal-content border border-amber-500/30">
+        <div class="flex justify-between items-center p-5 border-b border-amber-500/30 bg-gradient-to-r from-amber-500/10 to-orange-500/10">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-400/30 to-fuchsia-500/20 border border-purple-400/40 flex items-center justify-center">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-purple-300" fill="currentColor" viewBox="0 0 24 24">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400/30 to-orange-500/20 border border-amber-400/40 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-amber-300" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
               </svg>
             </div>
-            <h3 id="favorite-modal-title" class="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-300 to-fuchsia-300">收藏预览</h3>
+            <h3 id="favorite-modal-title" class="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-orange-300">收藏预览</h3>
           </div>
-          <button id="close-favorite-modal" class="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 border border-purple-500/30 hover:border-purple-400/50 text-purple-400 hover:text-purple-200 transition-all duration-300 hover:rotate-90" @click="closeFavoriteModal">
+          <button id="close-favorite-modal" class="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 border border-amber-500/30 hover:border-amber-400/50 text-amber-400 hover:text-amber-200 transition-all duration-300 hover:rotate-90" @click="closeFavoriteModal">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
-        <div id="favorite-preview" class="flex-1 overflow-y-auto p-5 bg-black/40 font-mono text-sm text-purple-100/90 whitespace-pre-wrap custom-scrollbar leading-relaxed">{{ currentFavoritePreview }}</div>
-        <div class="flex justify-between items-center p-5 bg-gradient-to-r from-purple-500/5 to-fuchsia-500/5 border-t border-purple-500/30">
-          <div class="flex items-center gap-2 text-xs text-purple-400/70" id="favorite-time">
+        <div id="favorite-preview" class="flex-1 overflow-y-auto p-5 bg-black/40 font-mono text-sm text-amber-100/90 whitespace-pre-wrap custom-scrollbar leading-relaxed">{{ currentFavoritePreview }}</div>
+        <div class="flex justify-between items-center p-5 bg-gradient-to-r from-amber-500/5 to-orange-500/5 border-t border-amber-500/30">
+          <div class="flex items-center gap-2 text-xs text-amber-400/70" id="favorite-time">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
@@ -618,7 +612,7 @@
               </svg>
               删除
             </button>
-            <button id="apply-favorite" class="btn-tech px-5 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-white shadow-lg shadow-cyan-500/30 transition-all duration-300 flex items-center gap-2" @click="applyFavorite">
+            <button id="apply-favorite" class="btn-tech px-5 py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white shadow-lg shadow-amber-500/30 transition-all duration-300 flex items-center gap-2" @click="applyFavorite">
               <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
               </svg>
@@ -645,26 +639,10 @@ const showSaveToast = ref(false)
 const showFavoriteToast = ref(false)
 const activeTab = ref('history')
 
-// 聚光灯效果
+// 鼠标跟随效果
 const mouseX = ref(-1000)
 const mouseY = ref(-1000)
 const isMouseInEditor = ref(false)
-
-const spotlightStyle = computed(() => {
-  if (!isMouseInEditor.value) {
-    return {
-      background: 'radial-gradient(circle at 50% 50%, transparent 0%, transparent 100px, rgba(0,0,0,0.98) 200px, rgba(0,0,0,1) 100%)'
-    }
-  }
-  return {
-    background: `radial-gradient(circle at ${mouseX.value}px ${mouseY.value}px, 
-      transparent 0%, 
-      transparent 60px, 
-      rgba(0,0,0,0.3) 120px, 
-      rgba(0,0,0,0.8) 200px, 
-      rgba(0,0,0,0.98) 100%)`
-  }
-})
 
 const glowCircleStyle = computed(() => {
   return {
@@ -678,6 +656,21 @@ const editorStyle = computed(() => {
     return {}
   }
   return {
+    textShadow: `0 0 20px rgba(56, 189, 248, 0.5),
+                 0 0 40px rgba(56, 189, 248, 0.3)`,
+  }
+})
+
+const editorStyleWithBg = computed(() => {
+  const baseStyle = {
+    backgroundImage: 'url(/bg.png)',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  }
+  if (!isMouseInEditor.value) {
+    return baseStyle
+  }
+  return {
+    ...baseStyle,
     textShadow: `0 0 20px rgba(56, 189, 248, 0.5),
                  0 0 40px rgba(56, 189, 248, 0.3)`,
   }
