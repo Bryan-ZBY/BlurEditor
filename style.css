@@ -1,4 +1,8 @@
 
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 @layer utilities {
     .fullscreen {
         width: 100vw;
@@ -47,6 +51,41 @@
         opacity: 1;
         visibility: visible;
     }
+}
+
+@layer base {
+  :root {
+    --color-bg-editor-bg: transparent;
+    --color-text-editor-text: #d3d3d3;
+    --color-editor-accent: #3b82f6;
+    --color-history-bg: #1a1a1a;
+    --color-favorite-bg: #1a2533;
+    --color-modal-content-bg: #1e1e1e;
+  }
+
+  .bg-editor-bg {
+    background-color: var(--color-bg-editor-bg);
+  }
+
+  .text-editor-text {
+    color: var(--color-text-editor-text);
+  }
+
+  .bg-editor-accent {
+    background-color: var(--color-editor-accent);
+  }
+
+  .bg-history-bg {
+    background-color: var(--color-history-bg);
+  }
+
+  .bg-favorite-bg {
+    background-color: var(--color-favorite-bg);
+  }
+
+  .bg-modal-content-bg {
+    background-color: var(--color-modal-content-bg);
+  }
 }
 
 /* VS Code 风格的滚动条 */
