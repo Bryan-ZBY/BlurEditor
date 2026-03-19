@@ -763,6 +763,7 @@ body {
 
 .markdown-preview p {
     margin-bottom: 1em;
+    white-space: pre-wrap;
 }
 
 .markdown-preview strong {
@@ -945,6 +946,7 @@ body {
 
 .markdown-preview-history p {
     margin-bottom: 0.8em;
+    white-space: pre-wrap;
 }
 
 .markdown-preview-history strong {
@@ -1069,6 +1071,7 @@ body {
 
 .markdown-preview-favorite p {
     margin-bottom: 0.8em;
+    white-space: pre-wrap;
 }
 
 .markdown-preview-favorite strong {
