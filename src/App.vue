@@ -67,24 +67,81 @@
         @keyup="updateStatus"
       ></textarea>
       
-      <!-- 预览模式 -->
+      <!-- 分屏预览模式 -->
       <div
         v-show="isPreviewMode"
-        class="fullscreen bg-cover bg-right-bottom bg-no-repeat text-editor-text text-sm md:text-base custom-scrollbar relative z-[15] markdown-preview overflow-y-auto"
-        :style="editorStyleWithBg"
+        class="flex w-full"
+        style="height: 100vh;"
       >
-        <!-- 返回编辑按钮 - 固定在右上角，避开侧边面板 -->
-        <button
-          @click="togglePreviewMode"
-          class="fixed top-4 z-[70] btn-tech group px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-purple-500/30 to-pink-500/30 hover:from-purple-500/50 hover:to-pink-500/50 border border-purple-400/50 hover:border-purple-300/70 text-purple-100 transition-all duration-300 flex items-center gap-2 shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50"
-          :style="previewButtonStyle"
+        <!-- 左侧编辑区域 -->
+        <div
+          v-show="!isFullscreenPreview"
+          class="bg-cover bg-right-bottom bg-no-repeat relative overflow-hidden"
+          :style="{ width: splitPosition + '%', height: '100%', ...editorStyleWithBg }"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-          </svg>
-          <span>返回编辑</span>
-        </button>
-        <div class="p-6 md:p-10" v-html="previewContent"></div>
+          <textarea
+            v-model="content"
+            ref="splitEditorRef"
+            class="w-full bg-transparent text-editor-text font-mono text-sm md:text-base p-6 md:p-10 custom-scrollbar editor-spotlight-mode resize-none border-none outline-none"
+            :class="{ 'blur-effect': isBlurred, 'no-blur': !isBlurred }"
+            :style="{ height: '100%' }"
+            placeholder="点击开始输入内容..."
+            @keydown="handleKeydown"
+            @input="handleInput"
+            @click="handleClick"
+            @focus="handleFocus"
+            @blur="handleBlur"
+            @keyup="updateStatus"
+          ></textarea>
+        </div>
+        
+        <!-- 拖动分隔线 -->
+        <div
+          v-show="!isFullscreenPreview"
+          class="w-2 bg-gradient-to-b from-cyan-400 via-purple-500 to-cyan-400 cursor-col-resize hover:w-3 z-30 flex-shrink-0 relative"
+          style="height: 100%;"
+          :class="{ 'opacity-50': isResizing }"
+          @mousedown="startResize"
+        >
+          <!-- 分隔线中间的手柄 -->
+          <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-1 h-8 bg-white/50 rounded-full"></div>
+        </div>
+        
+        <!-- 右侧预览区域 -->
+        <div
+          class="bg-black/80 relative overflow-y-auto custom-scrollbar markdown-preview preview-area"
+          :class="{ 'fullscreen-active': isFullscreenPreview }"
+          :style="previewAreaStyle"
+          @click="handlePreviewClick"
+        >
+          <!-- 按钮组 -->
+          <div class="absolute top-4 right-4 z-[70] flex items-center gap-2">
+            <!-- 全屏/退出全屏预览按钮 -->
+            <button
+              @click.stop="toggleFullscreenPreview"
+              class="btn-tech group px-3 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-cyan-500/30 to-blue-500/30 hover:from-cyan-500/50 hover:to-blue-500/50 border border-cyan-400/50 hover:border-cyan-300/70 text-cyan-100 transition-all duration-300 flex items-center gap-1.5 shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50"
+            >
+              <svg v-if="!isFullscreenPreview" xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+              </svg>
+              <svg v-else xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 9L4 4m0 0l5 5M4 4h5m11 5l-5-5m5 5v-5m0 5h-5M9 15l-5 5m0 0l5-5m-5 5v-5m0 5h5" />
+              </svg>
+              <span>{{ isFullscreenPreview ? '退出全屏' : '全屏' }}</span>
+            </button>
+            <!-- 退出分屏按钮 -->
+            <button
+              @click.stop="exitPreviewMode"
+              class="btn-tech group px-3 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-purple-500/30 to-pink-500/30 hover:from-purple-500/50 hover:to-pink-500/50 border border-purple-400/50 hover:border-purple-300/70 text-purple-100 transition-all duration-300 flex items-center gap-1.5 shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              <span>退出</span>
+            </button>
+          </div>
+          <div class="p-6 md:p-10 pt-16" v-html="previewContent"></div>
+        </div>
       </div>
     </div>
 
@@ -667,6 +724,9 @@ import { marked } from 'marked'
 const content = ref('')
 const isPreviewMode = ref(false)
 const editorRef = ref(null)
+const splitEditorRef = ref(null)
+const splitPosition = ref(50) // 分屏位置，默认 50%
+const isResizing = ref(false)
 const isBlurred = ref(true)
 const showStatusbar = ref(true)
 const showHistoryPanel = ref(false)
@@ -770,14 +830,91 @@ const previewContent = computed(() => {
 
 const togglePreviewMode = () => {
   isPreviewMode.value = !isPreviewMode.value
+  // 进入预览模式时隐藏状态栏，退出时显示
+  showStatusbar.value = !isPreviewMode.value
   // 从预览模式返回编辑模式时，自动聚焦编辑器
-  if (!isPreviewMode.value && editorRef.value) {
+  if (!isPreviewMode.value) {
+    isBlurred.value = false
+    showStatusbar.value = true
+    // 重置全屏预览状态
+    isFullscreenPreview.value = false
+    // 延迟聚焦，等待 DOM 更新
     setTimeout(() => {
-      editorRef.value.focus()
-      isBlurred.value = false
-      showStatusbar.value = true
+      const editor = editorRef.value || splitEditorRef.value
+      if (editor) {
+        editor.focus()
+      }
     }, 100)
   }
+}
+
+// 分屏拖动调整
+const startResize = (e) => {
+  e.preventDefault()
+  isResizing.value = true
+  document.addEventListener('mousemove', handleResize, { passive: true })
+  document.addEventListener('mouseup', stopResize)
+}
+
+const handleResize = (e) => {
+  if (!isResizing.value) return
+  requestAnimationFrame(() => {
+    const containerWidth = window.innerWidth
+    const newPosition = (e.clientX / containerWidth) * 100
+    // 限制最小和最大宽度
+    if (newPosition >= 20 && newPosition <= 80) {
+      splitPosition.value = newPosition
+    }
+  })
+}
+
+const stopResize = () => {
+  isResizing.value = false
+  document.removeEventListener('mousemove', handleResize)
+  document.removeEventListener('mouseup', stopResize)
+}
+
+// 点击预览区域时，让编辑区域模糊
+const handlePreviewClick = () => {
+  isBlurred.value = true
+}
+
+// 全屏预览模式
+const isFullscreenPreview = ref(false)
+
+const toggleFullscreenPreview = () => {
+  isFullscreenPreview.value = !isFullscreenPreview.value
+}
+
+// 预览区域样式
+const previewAreaStyle = computed(() => {
+  if (isFullscreenPreview.value) {
+    return {
+      height: '100%',
+      width: '100%'
+    }
+  }
+  return {
+    height: '100%',
+    width: `${100 - splitPosition.value}%`,
+    flex: '1 1 auto'
+  }
+})
+
+// 退出预览模式
+const exitPreviewMode = () => {
+  isPreviewMode.value = false
+  isFullscreenPreview.value = false
+  showStatusbar.value = true
+  // 立即清除模糊状态
+  isBlurred.value = false
+  // 自动聚焦编辑器
+  setTimeout(() => {
+    const editor = editorRef.value || splitEditorRef.value
+    if (editor) {
+      editor.focus()
+    }
+  }, 100)
 }
 
 const previewButtonStyle = computed(() => {
@@ -1047,6 +1184,9 @@ const handleInput = () => {
 
 const handleClick = () => {
   updateStatus()
+  // 点击输入区域时，清除模糊状态并显示状态栏
+  isBlurred.value = false
+  showStatusbar.value = true
   if (showHistoryPanel.value) {
     showHistoryPanel.value = false
   }

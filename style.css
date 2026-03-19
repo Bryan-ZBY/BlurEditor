@@ -100,6 +100,17 @@
         100% { transform: translateX(0); opacity: 1; }
     }
     
+    /* 预览区域样式 */
+    .preview-area {
+        flex: 1 1 auto;
+    }
+    
+    /* 预览区域全屏状态 */
+    .preview-area.fullscreen-active {
+        width: 100% !important;
+        flex: none !important;
+    }
+    
     .animate-glow {
         animation: glow 2s ease-in-out infinite;
     }
