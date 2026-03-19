@@ -128,7 +128,7 @@
 
     <!-- 状态栏 - 科技风增强 -->
     <div
-      class="statusbar fixed bottom-20 left-1/2 transform -translate-x-1/2 glass-tech px-4 py-3 rounded-2xl flex flex-wrap gap-4 justify-between items-center z-[100] w-auto max-w-[90vw] panel-tech"
+      class="statusbar fixed bottom-20 left-1/2 transform -translate-x-1/2 glass-tech px-4 py-3 rounded-2xl flex flex-wrap gap-4 justify-between items-center z-40 w-auto max-w-[90vw] panel-tech"
       :class="{ 'statusbar-visible': showStatusbar }"
     >
       <!-- 左侧装饰线 -->
@@ -290,7 +290,7 @@
         </div>
         
         <!-- 关闭按钮 -->
-        <button id="close-history" @click="showHistoryPanel = false" class="group relative w-11 h-11 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 border border-cyan-500/30 hover:border-cyan-400/60 text-cyan-400 hover:text-cyan-200 transition-all duration-300 overflow-hidden">
+        <button id="close-history" @click="closeHistoryPanel" class="group relative w-11 h-11 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 border border-cyan-500/30 hover:border-cyan-400/60 text-cyan-400 hover:text-cyan-200 transition-all duration-300 overflow-hidden">
           <div class="absolute inset-0 bg-gradient-to-r from-cyan-500/20 to-purple-500/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
           <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 relative z-10 group-hover:rotate-90 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -381,7 +381,7 @@
                   </div>
                   
                   <!-- 内容预览 -->
-                  <div class="text-sm text-slate-200 line-clamp-2 leading-relaxed mb-3 pl-10">{{ truncateText(record.content) }}</div>
+                  <div class="text-sm text-slate-200 line-clamp-1 leading-relaxed mb-2 pl-10">{{ truncateText(record.content) }}</div>
                   
                   <!-- 底部统计 -->
                   <div class="flex items-center gap-3 pl-10">
@@ -469,7 +469,7 @@
                   </div>
 
                   <!-- 内容预览 -->
-                  <div class="text-sm text-amber-100/95 line-clamp-2 leading-relaxed mb-3 pl-10">{{ truncateText(record.content) }}</div>
+                  <div class="text-sm text-amber-100/95 line-clamp-1 leading-relaxed mb-2 pl-10">{{ truncateText(record.content) }}</div>
 
                   <!-- 底部统计 -->
                   <div class="flex items-center gap-3 pl-10">
@@ -950,6 +950,8 @@ const handleKeydown = (e) => {
   if (e.key === 'Escape') {
     if (showHistoryPanel.value) {
       showHistoryPanel.value = false
+      // 关闭面板时恢复状态栏显示
+      showStatusbar.value = true
     }
 
     const now = Date.now()
@@ -958,6 +960,8 @@ const handleKeydown = (e) => {
         editorRef.value.blur()
       }
       showHistoryPanel.value = false
+      // 关闭面板时恢复状态栏显示
+      showStatusbar.value = true
       closeHistoryModal()
       closeFavoriteModal()
     }
@@ -989,14 +993,18 @@ const handleClick = () => {
 
 const handleFocus = () => {
   isBlurred.value = false
+  // 点击输入区域时显示状态栏
   showStatusbar.value = true
 }
 
 const handleBlur = () => {
   // 延迟执行，让按钮点击事件先完成
   setTimeout(() => {
-    // 如果侧边面板打开，不要隐藏状态栏
-    if (!showHistoryPanel.value) {
+    // 如果侧边面板打开，隐藏状态栏
+    if (showHistoryPanel.value) {
+      showStatusbar.value = false
+    } else {
+      // 面板关闭时，正常处理失焦
       isBlurred.value = true
       showStatusbar.value = false
       addHistoryRecord()
@@ -1032,28 +1040,28 @@ const adjustPadding = () => {
 
 const toggleHistoryPanel = () => {
   showHistoryPanel.value = !showHistoryPanel.value
+  // 切换面板时同步状态栏显示状态
+  showStatusbar.value = !showHistoryPanel.value
+}
+
+const closeHistoryPanel = () => {
+  showHistoryPanel.value = false
+  // 关闭面板时恢复状态栏显示
+  showStatusbar.value = true
 }
 
 const openHistoryPanel = () => {
   showHistoryPanel.value = true
   activeTab.value = 'history'
-  // 保持状态栏显示
-  showStatusbar.value = true
-  // 保持编辑器焦点
-  if (editorRef.value) {
-    editorRef.value.focus()
-  }
+  // 打开面板时隐藏状态栏
+  showStatusbar.value = false
 }
 
 const openFavoritesPanel = () => {
   showHistoryPanel.value = true
   activeTab.value = 'favorites'
-  // 保持状态栏显示
-  showStatusbar.value = true
-  // 保持编辑器焦点
-  if (editorRef.value) {
-    editorRef.value.focus()
-  }
+  // 打开面板时隐藏状态栏
+  showStatusbar.value = false
 }
 
 const truncateText = (text) => {
