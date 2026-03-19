@@ -36,12 +36,12 @@
     <!-- 发光圆圈跟随鼠标 - 多层 -->
     <div
       v-show="isMouseInEditor"
-      class="fixed pointer-events-none z-[5]"
+      class="fixed pointer-events-none z-[60]"
       :style="glowCircleStyle"
     >
-      <div class="absolute w-48 h-48 rounded-full bg-cyan-500/10 blur-3xl" style="left: -96px; top: -96px;"></div>
-      <div class="absolute w-36 h-36 rounded-full bg-cyan-400/15 blur-2xl" style="left: -72px; top: -72px;"></div>
-      <div class="absolute w-24 h-24 rounded-full bg-cyan-300/20 blur-xl" style="left: -48px; top: -48px;"></div>
+      <div class="absolute w-48 h-48 rounded-full bg-fuchsia-400/10 blur-3xl" style="left: -96px; top: -96px;"></div>
+      <div class="absolute w-36 h-36 rounded-full bg-fuchsia-300/15 blur-2xl" style="left: -72px; top: -72px;"></div>
+      <div class="absolute w-24 h-24 rounded-full bg-fuchsia-200/20 blur-xl" style="left: -48px; top: -48px;"></div>
     </div>
 
     <!-- 编辑器容器 -->
