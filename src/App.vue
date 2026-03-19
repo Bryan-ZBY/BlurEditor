@@ -50,13 +50,15 @@
       @mousemove="handleMouseMove"
       @mouseleave="handleMouseLeave"
     >
+      <!-- 编辑模式 -->
       <textarea
+        v-show="!isPreviewMode"
         v-model="content"
         ref="editorRef"
         class="fullscreen bg-cover bg-right-bottom bg-no-repeat text-editor-text font-mono text-sm md:text-base p-6 md:p-10 custom-scrollbar relative z-[15] editor-spotlight-mode"
         :class="{ 'blur-effect': isBlurred, 'no-blur': !isBlurred }"
         :style="editorStyleWithBg"
-        placeholder="点击开始输入内容... (双击ESC键退出编辑)"
+        placeholder="点击开始输入内容... (双击ESC键退出编辑)&#10;&#10;支持 Markdown 语法：&#10;# 标题&#10;**粗体** *斜体*&#10;- 列表项&#10;`代码` ```代码块```&#10;> 引用"
         @keydown="handleKeydown"
         @input="handleInput"
         @click="handleClick"
@@ -64,6 +66,26 @@
         @blur="handleBlur"
         @keyup="updateStatus"
       ></textarea>
+      
+      <!-- 预览模式 -->
+      <div
+        v-show="isPreviewMode"
+        class="fullscreen bg-cover bg-right-bottom bg-no-repeat text-editor-text text-sm md:text-base custom-scrollbar relative z-[15] markdown-preview overflow-y-auto"
+        :style="editorStyleWithBg"
+      >
+        <!-- 返回编辑按钮 - 固定在右上角，避开侧边面板 -->
+        <button
+          @click="togglePreviewMode"
+          class="fixed top-4 z-[70] btn-tech group px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-purple-500/30 to-pink-500/30 hover:from-purple-500/50 hover:to-pink-500/50 border border-purple-400/50 hover:border-purple-300/70 text-purple-100 transition-all duration-300 flex items-center gap-2 shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50"
+          :style="previewButtonStyle"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          </svg>
+          <span>返回编辑</span>
+        </button>
+        <div class="p-6 md:p-10" v-html="previewContent"></div>
+      </div>
     </div>
 
     <!-- Toast通知 - 科技风 -->
@@ -244,6 +266,19 @@
           </svg>
           <span>收藏</span>
           <span v-if="favorites.length > 0" class="px-1.5 py-0.5 text-[10px] rounded-md bg-amber-400/30 text-amber-200">{{ favorites.length }}</span>
+        </button>
+        
+        <!-- 分隔线 -->
+        <div class="h-8 w-px bg-gradient-to-b from-transparent via-white/20 to-transparent"></div>
+        
+        <!-- 预览按钮 -->
+        <button id="toggle-preview" @click="togglePreviewMode" class="btn-tech group relative px-5 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-purple-500/20 to-pink-500/20 hover:from-purple-500/40 hover:to-pink-500/40 border border-purple-400/40 hover:border-purple-300/60 text-purple-100 transition-all duration-300 flex items-center gap-2 shadow-lg shadow-purple-500/20 hover:shadow-purple-500/40 overflow-hidden" :class="{ 'ring-2 ring-purple-400/50': isPreviewMode }">
+          <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+          </svg>
+          <span>{{ isPreviewMode ? '编辑' : '预览' }}</span>
         </button>
       </div>
       
@@ -627,8 +662,10 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { marked } from 'marked'
 
 const content = ref('')
+const isPreviewMode = ref(false)
 const editorRef = ref(null)
 const isBlurred = ref(true)
 const showStatusbar = ref(true)
@@ -725,6 +762,30 @@ const wordCount = computed(() => {
 
 const lineCount = computed(() => {
   return content.value ? content.value.split('\n').length : 1
+})
+
+const previewContent = computed(() => {
+  return marked(content.value || '')
+})
+
+const togglePreviewMode = () => {
+  isPreviewMode.value = !isPreviewMode.value
+  // 从预览模式返回编辑模式时，自动聚焦编辑器
+  if (!isPreviewMode.value && editorRef.value) {
+    setTimeout(() => {
+      editorRef.value.focus()
+      isBlurred.value = false
+      showStatusbar.value = true
+    }, 100)
+  }
+}
+
+const previewButtonStyle = computed(() => {
+  return {
+    right: showHistoryPanel.value ? '400px' : '20px',
+    float: 'inline-end',
+    position: 'fixed'
+  }
 })
 
 const currentLine = ref(1)

@@ -714,3 +714,166 @@ body {
     animation: scanline 3s linear infinite;
     pointer-events: none;
 }
+
+/* Markdown 预览样式 */
+.markdown-preview {
+    color: #e2e8f0;
+    line-height: 1.8;
+    font-family: 'Microsoft YaHei', sans-serif;
+}
+
+.markdown-preview h1,
+.markdown-preview h2,
+.markdown-preview h3,
+.markdown-preview h4,
+.markdown-preview h5,
+.markdown-preview h6 {
+    color: #38bdf8;
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+    font-weight: 600;
+    text-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+}
+
+.markdown-preview h1 {
+    font-size: 2em;
+    border-bottom: 2px solid rgba(56, 189, 248, 0.3);
+    padding-bottom: 0.3em;
+}
+
+.markdown-preview h2 {
+    font-size: 1.5em;
+    border-bottom: 1px solid rgba(56, 189, 248, 0.2);
+    padding-bottom: 0.3em;
+}
+
+.markdown-preview h3 {
+    font-size: 1.25em;
+}
+
+.markdown-preview p {
+    margin-bottom: 1em;
+}
+
+.markdown-preview strong {
+    color: #f472b6;
+    font-weight: 600;
+}
+
+.markdown-preview em {
+    color: #a78bfa;
+    font-style: italic;
+}
+
+.markdown-preview code {
+    background: rgba(56, 189, 248, 0.15);
+    color: #38bdf8;
+    padding: 0.2em 0.4em;
+    border-radius: 4px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.9em;
+    border: 1px solid rgba(56, 189, 248, 0.2);
+}
+
+.markdown-preview pre {
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    border-radius: 8px;
+    padding: 1em;
+    overflow-x: auto;
+    margin: 1em 0;
+    box-shadow: 0 0 20px rgba(56, 189, 248, 0.1);
+}
+
+.markdown-preview pre code {
+    background: transparent;
+    border: none;
+    padding: 0;
+    color: #e2e8f0;
+}
+
+.markdown-preview ul,
+.markdown-preview ol {
+    margin: 1em 0;
+    padding-left: 2em;
+}
+
+.markdown-preview li {
+    margin: 0.3em 0;
+}
+
+.markdown-preview ul li {
+    list-style-type: disc;
+}
+
+.markdown-preview ul li::marker {
+    color: #38bdf8;
+}
+
+.markdown-preview ol li::marker {
+    color: #a855f7;
+}
+
+.markdown-preview blockquote {
+    border-left: 4px solid rgba(168, 85, 247, 0.5);
+    background: rgba(168, 85, 247, 0.1);
+    padding: 0.5em 1em;
+    margin: 1em 0;
+    border-radius: 0 8px 8px 0;
+    font-style: italic;
+}
+
+.markdown-preview blockquote p {
+    margin: 0;
+    color: #c4b5fd;
+}
+
+.markdown-preview a {
+    color: #38bdf8;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(56, 189, 248, 0.3);
+    transition: all 0.3s ease;
+}
+
+.markdown-preview a:hover {
+    color: #7dd3fc;
+    border-bottom-color: #7dd3fc;
+    text-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+}
+
+.markdown-preview hr {
+    border: none;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(56, 189, 248, 0.5), transparent);
+    margin: 2em 0;
+}
+
+.markdown-preview table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1em 0;
+    border: 1px solid rgba(56, 189, 248, 0.2);
+}
+
+.markdown-preview th,
+.markdown-preview td {
+    padding: 0.5em 1em;
+    border: 1px solid rgba(56, 189, 248, 0.2);
+    text-align: left;
+}
+
+.markdown-preview th {
+    background: rgba(56, 189, 248, 0.15);
+    color: #38bdf8;
+    font-weight: 600;
+}
+
+.markdown-preview tr:nth-child(even) {
+    background: rgba(56, 189, 248, 0.05);
+}
+
+.markdown-preview img {
+    max-width: 100%;
+    border-radius: 8px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+}
