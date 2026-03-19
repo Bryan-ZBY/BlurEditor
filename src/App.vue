@@ -109,17 +109,16 @@
         
         <!-- 右侧预览区域 -->
         <div
-          class="bg-black/80 relative overflow-y-auto custom-scrollbar markdown-preview preview-area"
+          class="bg-black/80 relative overflow-hidden flex flex-col markdown-preview preview-area"
           :class="{ 'fullscreen-active': isFullscreenPreview }"
           :style="previewAreaStyle"
-          @click="handlePreviewClick"
         >
-          <!-- 按钮组 -->
-          <div class="absolute top-4 right-4 z-[70] flex items-center gap-2">
+          <!-- 按钮组 - 固定在顶部 -->
+          <div class="sticky top-0 z-[70] flex items-center justify-end gap-2 p-4 bg-black/60 backdrop-blur-sm border-b border-cyan-500/20">
             <!-- 全屏/退出全屏预览按钮 -->
             <button
               @click.stop="toggleFullscreenPreview"
-              class="btn-tech group px-3 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-cyan-500/30 to-blue-500/30 hover:from-cyan-500/50 hover:to-blue-500/50 border border-cyan-400/50 hover:border-cyan-300/70 text-cyan-100 transition-all duration-300 flex items-center gap-1.5 shadow-lg shadow-cyan-500/30 hover:shadow-cyan-500/50"
+              class="btn-tech group px-3 h-8 rounded-lg text-xs font-bold bg-gradient-to-r from-cyan-500/20 to-blue-500/20 hover:from-cyan-500/40 hover:to-blue-500/40 border border-cyan-400/40 hover:border-cyan-300/60 text-cyan-100 transition-all duration-300 flex items-center gap-1.5 shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/40"
             >
               <svg v-if="!isFullscreenPreview" xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
@@ -132,7 +131,7 @@
             <!-- 退出分屏按钮 -->
             <button
               @click.stop="exitPreviewMode"
-              class="btn-tech group px-3 py-1.5 rounded-lg text-xs font-bold bg-gradient-to-r from-purple-500/30 to-pink-500/30 hover:from-purple-500/50 hover:to-pink-500/50 border border-purple-400/50 hover:border-purple-300/70 text-purple-100 transition-all duration-300 flex items-center gap-1.5 shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50"
+              class="btn-tech group px-3 h-8 rounded-lg text-xs font-bold bg-gradient-to-r from-purple-500/20 to-pink-500/20 hover:from-purple-500/40 hover:to-pink-500/40 border border-purple-400/40 hover:border-purple-300/60 text-purple-100 transition-all duration-300 flex items-center gap-1.5 shadow-lg shadow-purple-500/20 hover:shadow-purple-500/40"
             >
               <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -140,7 +139,8 @@
               <span>退出</span>
             </button>
           </div>
-          <div class="p-6 md:p-10 pt-16" v-html="previewContent"></div>
+          <!-- 预览内容 - 可滚动 -->
+          <div class="flex-1 overflow-y-auto custom-scrollbar p-6 md:p-10" v-html="previewContent" @click="handlePreviewClick"></div>
         </div>
       </div>
     </div>
@@ -294,7 +294,7 @@
       <!-- 右侧操作区 -->
       <div class="flex items-center gap-4">
         <!-- 最后保存时间 -->
-        <div class="flex items-center gap-2 px-4 py-2 rounded-xl bg-black/40 border border-cyan-500/20">
+        <div class="flex items-center gap-2 px-4 h-10 rounded-xl bg-black/40 border border-cyan-500/20">
           <div class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></div>
           <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-cyan-400/70" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -303,37 +303,40 @@
         </div>
         
         <!-- 分隔线 -->
-        <div class="h-8 w-px bg-gradient-to-b from-transparent via-white/20 to-transparent"></div>
+        <div class="h-10 w-px bg-gradient-to-b from-transparent via-white/20 to-transparent"></div>
         
         <!-- 历史按钮 -->
-        <button id="show-history" @click="openHistoryPanel" class="btn-tech group relative px-5 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-cyan-500/20 to-blue-500/20 hover:from-cyan-500/40 hover:to-blue-500/40 border border-cyan-400/40 hover:border-cyan-300/60 text-cyan-100 transition-all duration-300 flex items-center gap-2 shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/40 overflow-hidden">
+        <button id="show-history" @click="openHistoryPanel" class="btn-tech group relative px-5 h-10 rounded-xl text-xs font-bold bg-gradient-to-r from-cyan-500/20 to-blue-500/20 hover:from-cyan-500/40 hover:to-blue-500/40 border border-cyan-400/40 hover:border-cyan-300/60 text-cyan-100 transition-all duration-300 flex items-center gap-2 shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/40 overflow-hidden">
           <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
           <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 group-hover:rotate-12 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <span>历史</span>
-          <span v-if="history.length > 0" class="px-1.5 py-0.5 text-[10px] rounded-md bg-cyan-400/30 text-cyan-200">{{ history.length }}</span>
+          <span v-if="history.length > 0" class="px-1.5 h-5 flex items-center text-[10px] rounded-md bg-cyan-400/30 text-cyan-200">{{ history.length }}</span>
         </button>
         
         <!-- 收藏按钮 -->
-        <button id="show-favorites" @click="openFavoritesPanel" class="btn-tech group relative px-5 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/40 hover:to-orange-500/40 border border-amber-400/40 hover:border-amber-300/60 text-amber-100 transition-all duration-300 flex items-center gap-2 shadow-lg shadow-amber-500/20 hover:shadow-amber-500/40 overflow-hidden">
+        <button id="show-favorites" @click="openFavoritesPanel" class="btn-tech group relative px-5 h-10 rounded-xl text-xs font-bold bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/40 hover:to-orange-500/40 border border-amber-400/40 hover:border-amber-300/60 text-amber-100 transition-all duration-300 flex items-center gap-2 shadow-lg shadow-amber-500/20 hover:shadow-amber-500/40 overflow-hidden">
           <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
           <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 group-hover:scale-110 transition-transform" fill="currentColor" viewBox="0 0 24 24">
             <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
           </svg>
           <span>收藏</span>
-          <span v-if="favorites.length > 0" class="px-1.5 py-0.5 text-[10px] rounded-md bg-amber-400/30 text-amber-200">{{ favorites.length }}</span>
+          <span v-if="favorites.length > 0" class="px-1.5 h-5 flex items-center text-[10px] rounded-md bg-amber-400/30 text-amber-200">{{ favorites.length }}</span>
         </button>
         
         <!-- 分隔线 -->
-        <div class="h-8 w-px bg-gradient-to-b from-transparent via-white/20 to-transparent"></div>
+        <div class="h-10 w-px bg-gradient-to-b from-transparent via-white/20 to-transparent"></div>
         
         <!-- 预览按钮 -->
-        <button id="toggle-preview" @click="togglePreviewMode" class="btn-tech group relative px-5 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-purple-500/20 to-pink-500/20 hover:from-purple-500/40 hover:to-pink-500/40 border border-purple-400/40 hover:border-purple-300/60 text-purple-100 transition-all duration-300 flex items-center gap-2 shadow-lg shadow-purple-500/20 hover:shadow-purple-500/40 overflow-hidden" :class="{ 'ring-2 ring-purple-400/50': isPreviewMode }">
+        <button id="toggle-preview" @click="togglePreviewMode" class="btn-tech group relative px-5 h-10 rounded-xl text-xs font-bold bg-gradient-to-r from-purple-500/20 to-pink-500/20 hover:from-purple-500/40 hover:to-pink-500/40 border border-purple-400/40 hover:border-purple-300/60 text-purple-100 transition-all duration-300 flex items-center gap-2 shadow-lg shadow-purple-500/20 hover:shadow-purple-500/40 overflow-hidden">
           <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg v-if="!isPreviewMode" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+          </svg>
+          <svg v-else xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
           </svg>
           <span>{{ isPreviewMode ? '编辑' : '预览' }}</span>
         </button>
@@ -620,7 +623,7 @@
             </svg>
           </button>
         </div>
-        <div id="history-preview" class="flex-1 overflow-y-auto p-5 bg-black/40 font-mono text-sm text-cyan-100/90 whitespace-pre-wrap custom-scrollbar leading-relaxed">{{ currentHistoryPreview }}</div>
+        <div id="history-preview" class="flex-1 overflow-y-auto p-5 bg-black/40 font-mono text-sm text-cyan-100/90 whitespace-pre-wrap custom-scrollbar leading-relaxed markdown-preview-history" v-html="historyPreviewHtml"></div>
         <div class="flex justify-between items-center p-5 bg-gradient-to-r from-cyan-500/5 to-purple-500/5 border-t border-cyan-500/30">
           <div class="flex items-center gap-2 text-xs text-cyan-400/70" id="history-time">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -679,7 +682,7 @@
             </svg>
           </button>
         </div>
-        <div id="favorite-preview" class="flex-1 overflow-y-auto p-5 bg-black/40 font-mono text-sm text-amber-100/90 whitespace-pre-wrap custom-scrollbar leading-relaxed">{{ currentFavoritePreview }}</div>
+        <div id="favorite-preview" class="flex-1 overflow-y-auto p-5 bg-black/40 font-mono text-sm text-amber-100/90 whitespace-pre-wrap custom-scrollbar leading-relaxed markdown-preview-favorite" v-html="favoritePreviewHtml"></div>
         <div class="flex justify-between items-center p-5 bg-gradient-to-r from-amber-500/5 to-orange-500/5 border-t border-amber-500/30">
           <div class="flex items-center gap-2 text-xs text-amber-400/70" id="favorite-time">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -935,6 +938,15 @@ const currentHistoryTime = ref('')
 const currentFavoritePreview = ref('')
 const currentFavoriteTime = ref('')
 const copySuccess = ref(false)
+
+// Markdown 预览计算属性
+const historyPreviewHtml = computed(() => {
+  return marked(currentHistoryPreview.value || '')
+})
+
+const favoritePreviewHtml = computed(() => {
+  return marked(currentFavoritePreview.value || '')
+})
 const emptyToast = ref({ show: false, message: '', color: 'yellow' })
 const emptyToastTimer = ref(null)
 

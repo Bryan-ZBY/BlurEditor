@@ -547,7 +547,6 @@ body {
 #history-preview, #favorite-preview {
     scrollbar-width: thin;
     scrollbar-color: rgba(56, 189, 248, 0.5) rgba(15, 23, 42, 0.8);
-    white-space: pre-wrap;
     font-family: 'Microsoft YaHei', sans-serif;
 }
 
@@ -632,7 +631,7 @@ body {
     word-break: break-word;
     overflow: hidden;
     display: -webkit-box;
-    -webkit-line-clamp: 2;
+    -webkit-line-clamp: 1;
     -webkit-box-orient: vertical;
 }
 
@@ -794,6 +793,26 @@ body {
     overflow-x: auto;
     margin: 1em 0;
     box-shadow: 0 0 20px rgba(56, 189, 248, 0.1);
+    scrollbar-width: thin;
+    scrollbar-color: rgba(56, 189, 248, 0.5) rgba(15, 23, 42, 0.5);
+}
+
+.markdown-preview pre::-webkit-scrollbar {
+    height: 6px;
+}
+
+.markdown-preview pre::-webkit-scrollbar-track {
+    background: rgba(15, 23, 42, 0.5);
+    border-radius: 3px;
+}
+
+.markdown-preview pre::-webkit-scrollbar-thumb {
+    background: linear-gradient(90deg, rgba(56, 189, 248, 0.6), rgba(168, 85, 247, 0.6));
+    border-radius: 3px;
+}
+
+.markdown-preview pre::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(90deg, rgba(56, 189, 248, 0.8), rgba(168, 85, 247, 0.8));
 }
 
 .markdown-preview pre code {
@@ -887,4 +906,252 @@ body {
     max-width: 100%;
     border-radius: 8px;
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+}
+
+/* 历史记录预览 Markdown 样式 - 保持青色字体 */
+.markdown-preview-history {
+    color: rgba(207, 250, 254, 0.9);
+    line-height: 1.8;
+    font-family: 'Microsoft YaHei', sans-serif;
+}
+
+.markdown-preview-history h1,
+.markdown-preview-history h2,
+.markdown-preview-history h3,
+.markdown-preview-history h4,
+.markdown-preview-history h5,
+.markdown-preview-history h6 {
+    color: #22d3ee;
+    margin-top: 1.2em;
+    margin-bottom: 0.5em;
+    font-weight: 600;
+}
+
+.markdown-preview-history h1 {
+    font-size: 1.8em;
+    border-bottom: 2px solid rgba(34, 211, 238, 0.3);
+    padding-bottom: 0.3em;
+}
+
+.markdown-preview-history h2 {
+    font-size: 1.4em;
+    border-bottom: 1px solid rgba(34, 211, 238, 0.2);
+    padding-bottom: 0.3em;
+}
+
+.markdown-preview-history h3 {
+    font-size: 1.2em;
+}
+
+.markdown-preview-history p {
+    margin-bottom: 0.8em;
+}
+
+.markdown-preview-history strong {
+    color: #f472b6;
+    font-weight: 600;
+}
+
+.markdown-preview-history em {
+    color: #a78bfa;
+    font-style: italic;
+}
+
+.markdown-preview-history code {
+    background: rgba(34, 211, 238, 0.15);
+    color: #22d3ee;
+    padding: 0.2em 0.4em;
+    border-radius: 4px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.9em;
+    border: 1px solid rgba(34, 211, 238, 0.2);
+}
+
+.markdown-preview-history pre {
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid rgba(34, 211, 238, 0.2);
+    border-radius: 8px;
+    padding: 1em;
+    overflow-x: auto;
+    margin: 1em 0;
+}
+
+.markdown-preview-history pre code {
+    background: transparent;
+    border: none;
+    padding: 0;
+    color: rgba(207, 250, 254, 0.9);
+}
+
+.markdown-preview-history ul,
+.markdown-preview-history ol {
+    margin: 0.8em 0;
+    padding-left: 1.8em;
+}
+
+.markdown-preview-history li {
+    margin: 0.25em 0;
+}
+
+.markdown-preview-history ul li::marker {
+    color: #22d3ee;
+}
+
+.markdown-preview-history ol li::marker {
+    color: #a855f7;
+}
+
+.markdown-preview-history blockquote {
+    border-left: 4px solid rgba(168, 85, 247, 0.5);
+    background: rgba(168, 85, 247, 0.1);
+    padding: 0.5em 1em;
+    margin: 0.8em 0;
+    border-radius: 0 8px 8px 0;
+}
+
+.markdown-preview-history blockquote p {
+    margin: 0;
+    color: rgba(207, 250, 254, 0.8);
+}
+
+.markdown-preview-history a {
+    color: #22d3ee;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(34, 211, 238, 0.3);
+}
+
+.markdown-preview-history a:hover {
+    color: #67e8f9;
+    border-bottom-color: #67e8f9;
+}
+
+.markdown-preview-history hr {
+    border: none;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(34, 211, 238, 0.5), transparent);
+    margin: 1.5em 0;
+}
+
+/* 收藏预览 Markdown 样式 - 保持琥珀色字体 */
+.markdown-preview-favorite {
+    color: rgba(254, 243, 199, 0.95);
+    line-height: 1.8;
+    font-family: 'Microsoft YaHei', sans-serif;
+}
+
+.markdown-preview-favorite h1,
+.markdown-preview-favorite h2,
+.markdown-preview-favorite h3,
+.markdown-preview-favorite h4,
+.markdown-preview-favorite h5,
+.markdown-preview-favorite h6 {
+    color: #fbbf24;
+    margin-top: 1.2em;
+    margin-bottom: 0.5em;
+    font-weight: 600;
+}
+
+.markdown-preview-favorite h1 {
+    font-size: 1.8em;
+    border-bottom: 2px solid rgba(251, 191, 36, 0.3);
+    padding-bottom: 0.3em;
+}
+
+.markdown-preview-favorite h2 {
+    font-size: 1.4em;
+    border-bottom: 1px solid rgba(251, 191, 36, 0.2);
+    padding-bottom: 0.3em;
+}
+
+.markdown-preview-favorite h3 {
+    font-size: 1.2em;
+}
+
+.markdown-preview-favorite p {
+    margin-bottom: 0.8em;
+}
+
+.markdown-preview-favorite strong {
+    color: #f472b6;
+    font-weight: 600;
+}
+
+.markdown-preview-favorite em {
+    color: #a78bfa;
+    font-style: italic;
+}
+
+.markdown-preview-favorite code {
+    background: rgba(251, 191, 36, 0.15);
+    color: #fbbf24;
+    padding: 0.2em 0.4em;
+    border-radius: 4px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.9em;
+    border: 1px solid rgba(251, 191, 36, 0.2);
+}
+
+.markdown-preview-favorite pre {
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid rgba(251, 191, 36, 0.2);
+    border-radius: 8px;
+    padding: 1em;
+    overflow-x: auto;
+    margin: 1em 0;
+}
+
+.markdown-preview-favorite pre code {
+    background: transparent;
+    border: none;
+    padding: 0;
+    color: rgba(254, 243, 199, 0.95);
+}
+
+.markdown-preview-favorite ul,
+.markdown-preview-favorite ol {
+    margin: 0.8em 0;
+    padding-left: 1.8em;
+}
+
+.markdown-preview-favorite li {
+    margin: 0.25em 0;
+}
+
+.markdown-preview-favorite ul li::marker {
+    color: #fbbf24;
+}
+
+.markdown-preview-favorite ol li::marker {
+    color: #a855f7;
+}
+
+.markdown-preview-favorite blockquote {
+    border-left: 4px solid rgba(168, 85, 247, 0.5);
+    background: rgba(168, 85, 247, 0.1);
+    padding: 0.5em 1em;
+    margin: 0.8em 0;
+    border-radius: 0 8px 8px 0;
+}
+
+.markdown-preview-favorite blockquote p {
+    margin: 0;
+    color: rgba(254, 243, 199, 0.8);
+}
+
+.markdown-preview-favorite a {
+    color: #fbbf24;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.markdown-preview-favorite a:hover {
+    color: #fcd34d;
+    border-bottom-color: #fcd34d;
+}
+
+.markdown-preview-favorite hr {
+    border: none;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(251, 191, 36, 0.5), transparent);
+    margin: 1.5em 0;
 }
