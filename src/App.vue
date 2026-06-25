@@ -1,7 +1,7 @@
 <template>
-  <div class="flex w-screen h-screen overflow-hidden" :class="isDark ? 'bg-slate-900' : 'bg-gray-50'">
+  <div class="flex w-screen h-screen overflow-hidden app-root" :class="themeClass">
     <!-- 文件管理器 -->
-    <div class="relative">
+    <div class="relative file-manager-wrapper">
       <FileManager
         :root-files="rootFiles"
         :archived-files="archivedFiles"
@@ -25,7 +25,7 @@
     </div>
 
     <!-- 编辑器 -->
-    <div class="flex-1 min-w-0 flex flex-col">
+    <div class="flex-1 min-w-0 flex flex-col editor-wrapper">
       <Editor
         v-if="currentFile"
         :content="currentFile?.content || ''"
@@ -48,33 +48,52 @@
         ref="editorComponent"
       />
 
-      <div v-if="!currentFile" class="w-full h-full flex items-center justify-center theme-text-muted">
-        <div class="text-center">
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-16 h-16 mx-auto mb-4 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-          </svg>
-          <p class="text-lg font-medium mb-2">没有打开的文件</p>
-          <p class="text-sm opacity-60">请在左侧文件管理器中选择一个文件，或创建一个新文件</p>
+      <Transition name="fade-scale" mode="out-in">
+        <div v-if="!currentFile" class="w-full h-full flex items-center justify-center empty-state">
+          <div class="text-center empty-content">
+            <div class="empty-icon-wrapper">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-20 h-20 mx-auto mb-6 empty-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <div class="empty-icon-glow"></div>
+            </div>
+            <h2 class="text-xl font-semibold mb-3 empty-title">没有打开的文件</h2>
+            <p class="text-sm opacity-60 empty-desc">请在左侧文件管理器中选择一个文件，或创建一个新文件</p>
+            <div class="mt-6 flex items-center justify-center gap-2 empty-hint">
+              <kbd class="px-2 py-1 rounded text-xs font-mono border empty-kbd">Ctrl</kbd>
+              <span class="text-xs opacity-40">+</span>
+              <kbd class="px-2 py-1 rounded text-xs font-mono border empty-kbd">Shift</kbd>
+              <span class="text-xs opacity-40">+</span>
+              <kbd class="px-2 py-1 rounded text-xs font-mono border empty-kbd">F</kbd>
+              <span class="text-xs opacity-50 ml-1">全局搜索</span>
+            </div>
+          </div>
         </div>
-      </div>
+      </Transition>
     </div>
 
     <!-- 导入文件弹窗 -->
-    <ImportModal
-      :visible="showImportModal"
-      :is-dark="isDark"
-      @close="showImportModal = false"
-      @import="handleImport"
-    />
+    <Transition name="modal">
+      <ImportModal
+        v-if="showImportModal"
+        :visible="showImportModal"
+        :is-dark="isDark"
+        @close="showImportModal = false"
+        @import="handleImport"
+      />
+    </Transition>
 
     <!-- 全局搜索 -->
-    <GlobalSearch
-      :visible="showGlobalSearch"
-      :is-dark="isDark"
-      :files="fileSystem.files.value"
-      @close="showGlobalSearch = false"
-      @open="handleGlobalSearchOpen"
-    />
+    <Transition name="modal">
+      <GlobalSearch
+        v-if="showGlobalSearch"
+        :visible="showGlobalSearch"
+        :is-dark="isDark"
+        :files="fileSystem.files.value"
+        @close="showGlobalSearch = false"
+        @open="handleGlobalSearchOpen"
+      />
+    </Transition>
   </div>
 </template>
 
@@ -106,6 +125,8 @@ const currentFileId = fileSystem.currentFileId
 const currentFile = fileSystem.currentFile
 const rootFiles = fileSystem.rootFiles
 const archivedFiles = fileSystem.archivedFiles
+
+const themeClass = computed(() => isDark.value ? 'theme-dark' : 'theme-light')
 
 function getChildren(parentId) {
   return fileSystem.getChildren(parentId)
@@ -256,3 +277,111 @@ onMounted(() => {
   })
 })
 </script>
+
+<style scoped>
+.app-root {
+  background: var(--editor-bg);
+  transition: background var(--transition-normal) ease;
+}
+
+.file-manager-wrapper {
+  border-right: 1px solid var(--border-color);
+  transition: border-color var(--transition-normal);
+}
+
+.editor-wrapper {
+  position: relative;
+  background: var(--editor-bg);
+}
+
+/* 空状态 */
+.empty-state {
+  background: var(--editor-bg);
+}
+
+.empty-content {
+  animation: fadeInScale 0.6s ease-out;
+}
+
+.empty-icon-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.empty-icon {
+  color: var(--text-muted);
+  opacity: 0.4;
+  animation: float 4s ease-in-out infinite;
+}
+
+.empty-icon-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80px;
+  height: 80px;
+  background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+  opacity: 0.3;
+  animation: pulseGlow 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.empty-title {
+  color: var(--text-secondary);
+  animation: fadeInUp 0.6s ease-out 0.1s both;
+}
+
+.empty-desc {
+  color: var(--text-muted);
+  animation: fadeInUp 0.6s ease-out 0.2s both;
+}
+
+.empty-hint {
+  animation: fadeInUp 0.6s ease-out 0.3s both;
+}
+
+.empty-kbd {
+  background: var(--hover-bg);
+  border-color: var(--border-color);
+  color: var(--text-muted);
+  transition: all var(--transition-fast);
+}
+
+.empty-kbd:hover {
+  border-color: var(--accent-indigo);
+  color: var(--accent-indigo);
+  box-shadow: 0 0 8px var(--accent-glow);
+}
+
+/* 页面过渡动画 */
+.fade-scale-enter-active,
+.fade-scale-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fade-scale-enter-from,
+.fade-scale-leave-to {
+  opacity: 0;
+  transform: scale(0.97);
+}
+
+/* 模态框过渡 */
+.modal-enter-active,
+.modal-leave-active {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
+}
+
+.modal-enter-from :deep(.import-modal),
+.modal-enter-from :deep(.global-search-modal),
+.modal-leave-to :deep(.import-modal),
+.modal-leave-to :deep(.global-search-modal) {
+  transform: scale(0.96) translateY(8px);
+  opacity: 0;
+}
+</style>
