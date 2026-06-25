@@ -127,10 +127,10 @@ watch(() => props.content, () => {
   --outline-border: #334155;
   --outline-text: #94a3b8;
   --outline-text-hover: #e2e8f0;
-  --outline-active: #6366f1;
-  --outline-item-hover: rgba(99, 102, 241, 0.08);
-  --outline-item-active: rgba(99, 102, 241, 0.12);
-  --outline-glow: rgba(99, 102, 241, 0.15);
+  --outline-active: #3b82f6;
+  --outline-item-hover: rgba(59, 130, 246, 0.08);
+  --outline-item-active: rgba(59, 130, 246, 0.12);
+  --outline-glow: rgba(59, 130, 246, 0.15);
 }
 
 /* 头部 */

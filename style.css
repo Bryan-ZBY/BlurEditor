@@ -6,30 +6,30 @@
    主题变量系统 - 2026 Premium Edition
    ======================== */
 
-/* 夜间模式（默认）- 深邃星空紫 */
+/* 夜间模式（默认）- 深邃海洋蓝 */
 :root {
   /* 编辑器背景 */
-  --editor-bg: #0f0f1a;
-  --editor-bg-split: #0c0c15;
+  --editor-bg: #0f172a;
+  --editor-bg-split: #0c1322;
   --editor-text: #e2e8f0;
   --editor-placeholder: rgba(148, 163, 184, 0.35);
 
   /* 工具栏 */
-  --toolbar-bg: rgba(15, 15, 26, 0.85);
-  --toolbar-border: rgba(99, 102, 241, 0.15);
+  --toolbar-bg: rgba(15, 23, 42, 0.85);
+  --toolbar-border: rgba(59, 130, 246, 0.15);
 
   /* 预览区 */
-  --preview-bg: #12121f;
-  --preview-toolbar-bg: rgba(18, 18, 31, 0.9);
-  --preview-toolbar-border: rgba(99, 102, 241, 0.12);
+  --preview-bg: #111827;
+  --preview-toolbar-bg: rgba(17, 24, 39, 0.9);
+  --preview-toolbar-border: rgba(59, 130, 246, 0.12);
 
   /* 按钮 */
   --btn-secondary-bg: rgba(51, 65, 85, 0.5);
   --btn-secondary-bg-hover: rgba(71, 85, 105, 0.7);
-  --btn-secondary-border: rgba(99, 102, 241, 0.25);
+  --btn-secondary-border: rgba(59, 130, 246, 0.25);
   --btn-secondary-text: #94a3b8;
-  --btn-primary-bg: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-  --btn-primary-bg-hover: linear-gradient(135deg, #818cf8 0%, #a78bfa 100%);
+  --btn-primary-bg: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  --btn-primary-bg-hover: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
   --btn-primary-text: #ffffff;
 
   /* 文本 */
@@ -38,40 +38,40 @@
   --text-muted: #64748b;
 
   /* 边框 */
-  --border-color: rgba(99, 102, 241, 0.15);
-  --border-color-strong: rgba(99, 102, 241, 0.3);
+  --border-color: rgba(59, 130, 246, 0.15);
+  --border-color-strong: rgba(59, 130, 246, 0.3);
 
   /* 滚动条 */
   --scrollbar-track: transparent;
-  --scrollbar-thumb: rgba(99, 102, 241, 0.25);
-  --scrollbar-thumb-hover: rgba(99, 102, 241, 0.5);
-  --scrollbar-glow: rgba(99, 102, 241, 0.3);
+  --scrollbar-thumb: rgba(59, 130, 246, 0.25);
+  --scrollbar-thumb-hover: rgba(59, 130, 246, 0.5);
+  --scrollbar-glow: rgba(59, 130, 246, 0.3);
 
   /* 对话框 */
-  --dialog-bg: #151528;
-  --dialog-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(99, 102, 241, 0.1);
+  --dialog-bg: #1e293b;
+  --dialog-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(59, 130, 246, 0.1);
 
   /* 输入框 */
   --input-bg: rgba(30, 41, 59, 0.5);
-  --input-border: rgba(99, 102, 241, 0.2);
+  --input-border: rgba(59, 130, 246, 0.2);
   --input-text: #e2e8f0;
   --input-placeholder: #64748b;
 
   /* 悬停背景 */
-  --hover-bg: rgba(99, 102, 241, 0.08);
-  --hover-bg-strong: rgba(99, 102, 241, 0.15);
+  --hover-bg: rgba(59, 130, 246, 0.08);
+  --hover-bg-strong: rgba(59, 130, 246, 0.15);
 
   /* 玻璃态 */
-  --glass-bg: rgba(15, 15, 26, 0.7);
-  --glass-border: rgba(99, 102, 241, 0.15);
+  --glass-bg: rgba(15, 23, 42, 0.7);
+  --glass-border: rgba(59, 130, 246, 0.15);
   --glass-backdrop: blur(16px) saturate(1.2);
 
   /* 强调色 */
-  --accent-indigo: #6366f1;
-  --accent-purple: #8b5cf6;
+  --accent-indigo: #87befa;
+  --accent-purple: #2563eb;
   --accent-blue: #3b82f6;
   --accent-cyan: #06b6d4;
-  --accent-glow: rgba(99, 102, 241, 0.4);
+  --accent-glow: rgba(59, 130, 246, 0.4);
 
   /* 动画时长 */
   --transition-fast: 150ms;
@@ -79,60 +79,60 @@
   --transition-slow: 400ms;
 }
 
-/* 白天模式 - 纯净冰川白 */
+/* 白天模式 - 纯净天空蓝 */
 [data-theme="light"] {
-  --editor-bg: #fafbfc;
-  --editor-bg-split: #f5f6f8;
+  --editor-bg: #f8fafc;
+  --editor-bg-split: #f1f5f9;
   --editor-text: #1e293b;
   --editor-placeholder: rgba(100, 116, 139, 0.35);
 
-  --toolbar-bg: rgba(250, 251, 252, 0.85);
-  --toolbar-border: rgba(99, 102, 241, 0.1);
+  --toolbar-bg: rgba(248, 250, 252, 0.85);
+  --toolbar-border: rgba(59, 130, 246, 0.1);
 
   --preview-bg: #ffffff;
   --preview-toolbar-bg: rgba(255, 255, 255, 0.9);
-  --preview-toolbar-border: rgba(99, 102, 241, 0.08);
+  --preview-toolbar-border: rgba(59, 130, 246, 0.08);
 
   --btn-secondary-bg: rgba(241, 245, 249, 0.8);
   --btn-secondary-bg-hover: rgba(226, 232, 240, 0.9);
-  --btn-secondary-border: rgba(99, 102, 241, 0.15);
+  --btn-secondary-border: rgba(59, 130, 246, 0.15);
   --btn-secondary-text: #475569;
-  --btn-primary-bg: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-  --btn-primary-bg-hover: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  --btn-primary-bg: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  --btn-primary-bg-hover: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   --btn-primary-text: #ffffff;
 
   --text-primary: #0f172a;
   --text-secondary: #475569;
   --text-muted: #94a3b8;
 
-  --border-color: rgba(99, 102, 241, 0.1);
-  --border-color-strong: rgba(99, 102, 241, 0.2);
+  --border-color: rgba(59, 130, 246, 0.1);
+  --border-color-strong: rgba(59, 130, 246, 0.2);
 
   --scrollbar-track: transparent;
-  --scrollbar-thumb: rgba(99, 102, 241, 0.2);
-  --scrollbar-thumb-hover: rgba(99, 102, 241, 0.4);
-  --scrollbar-glow: rgba(99, 102, 241, 0.2);
+  --scrollbar-thumb: rgba(59, 130, 246, 0.2);
+  --scrollbar-thumb-hover: rgba(59, 130, 246, 0.4);
+  --scrollbar-glow: rgba(59, 130, 246, 0.2);
 
   --dialog-bg: #ffffff;
-  --dialog-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(99, 102, 241, 0.08);
+  --dialog-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(59, 130, 246, 0.08);
 
   --input-bg: rgba(241, 245, 249, 0.6);
-  --input-border: rgba(99, 102, 241, 0.15);
+  --input-border: rgba(59, 130, 246, 0.15);
   --input-text: #1e293b;
   --input-placeholder: #94a3b8;
 
-  --hover-bg: rgba(99, 102, 241, 0.05);
-  --hover-bg-strong: rgba(99, 102, 241, 0.1);
+  --hover-bg: rgba(59, 130, 246, 0.05);
+  --hover-bg-strong: rgba(59, 130, 246, 0.1);
 
   --glass-bg: rgba(255, 255, 255, 0.7);
-  --glass-border: rgba(99, 102, 241, 0.1);
+  --glass-border: rgba(59, 130, 246, 0.1);
   --glass-backdrop: blur(16px) saturate(1.2);
 
-  --accent-indigo: #4f46e5;
-  --accent-purple: #7c3aed;
+  --accent-indigo: #000000;
+  --accent-purple: #1d4ed8;
   --accent-blue: #2563eb;
   --accent-cyan: #0891b2;
-  --accent-glow: rgba(99, 102, 241, 0.25);
+  --accent-glow: rgba(59, 130, 246, 0.25);
 }
 
 /* ========================
@@ -286,10 +286,10 @@
 
   /* 发光效果 */
   .glow-indigo {
-    box-shadow: 0 0 20px rgba(99, 102, 241, 0.3);
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
   }
   .glow-purple {
-    box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+    box-shadow: 0 0 20px rgba(37, 99, 235, 0.3);
   }
 }
 
@@ -576,49 +576,31 @@ a:hover {
 
 /* 行内代码 */
 .markdown-preview code {
-  padding: 0.2em 0.5em;
+  padding: 0.2em 0.45em;
   margin: 0 2px;
   font-size: 85%;
   font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
   background: var(--hover-bg);
-  border-radius: 6px;
-  color: var(--accent-purple);
-  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  color: var(--accent-indigo);
   word-break: break-word;
 }
 
-/* 代码块 - 核心优化 */
+/* 代码块 - pre 仅用于代码内容展示，容器样式由 .code-block-wrapper 负责 */
 .markdown-preview pre {
   padding: 0;
+  margin: 0;
   overflow: hidden;
   font-size: 14px;
   line-height: 1.6;
-  background: var(--editor-bg);
-  border-radius: 12px;
-  border: 1px solid var(--border-color);
-  margin: 1.5em 0;
-  box-shadow:
-    0 4px 6px -1px rgba(0, 0, 0, 0.1),
-    0 2px 4px -1px rgba(0, 0, 0, 0.06),
-    inset 0 1px 0 rgba(255, 255, 255, 0.03);
-  position: relative;
-  animation: fadeInScale 0.4s ease-out;
-}
-
-.markdown-preview pre::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--accent-indigo), var(--accent-purple), transparent);
-  opacity: 0.5;
+  background: transparent;
+  border: none;
+  border-radius: 0;
 }
 
 .markdown-preview pre code {
   display: block;
-  padding: 1.25em 1.5em;
+  padding: 1em 1.25em;
   overflow-x: auto;
   margin: 0;
   line-height: 1.6;
@@ -627,58 +609,38 @@ a:hover {
   border: none;
   font-size: 100%;
   border-radius: 0;
-  color: var(--editor-text);
+  color: #e2e8f0;
 }
 
-/* 代码块包装器 */
+/* 代码块包装器 - 外层容器，始终使用深色模式 */
 .markdown-preview .code-block-wrapper {
   position: relative;
-  margin: 1.5em 0;
-  border-radius: 12px;
-  border: 1px solid var(--border-color);
+  margin: 1.25em 0;
+  border-radius: 8px;
+  border: 1px solid rgba(30, 41, 59, 0.6);
   overflow: hidden;
-  box-shadow:
-    0 4px 6px -1px rgba(0, 0, 0, 0.1),
-    0 2px 4px -1px rgba(0, 0, 0, 0.06),
-    inset 0 1px 0 rgba(255, 255, 255, 0.03);
-  animation: fadeInScale 0.4s ease-out;
-  transition: border-color var(--transition-normal), box-shadow var(--transition-normal);
+  background: #0d0d0d;
+  transition: border-color var(--transition-normal);
 }
 
 .markdown-preview .code-block-wrapper:hover {
   border-color: var(--border-color-strong);
-  box-shadow:
-    0 8px 25px -5px rgba(0, 0, 0, 0.15),
-    0 0 0 1px var(--accent-glow),
-    inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
-.markdown-preview .code-block-wrapper::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--accent-indigo), var(--accent-purple), transparent);
-  opacity: 0.5;
-  z-index: 1;
-}
-
-/* 代码块头部 */
+/* 代码块头部，始终使用深色模式 */
 .markdown-preview .code-block-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0.6em 1em;
-  background: var(--hover-bg);
-  border-bottom: 1px solid var(--border-color);
+  padding: 0.4em 0.85em;
+  background: rgba(30, 41, 59, 0.5);
+  border-bottom: 1px solid rgba(30, 41, 59, 0.6);
   position: relative;
   z-index: 2;
 }
 
 .markdown-preview .code-block-header > span:first-child {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 600;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -691,42 +653,25 @@ a:hover {
   background-color: transparent;
   border: 1px solid var(--border-color);
   color: var(--text-muted);
-  padding: 0.35rem 0.65rem;
-  border-radius: 6px;
-  font-size: 0.75rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 5px;
+  font-size: 0.7rem;
   font-weight: 500;
   transition: all var(--transition-fast) ease;
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0.3rem;
   cursor: pointer;
 }
 
 .markdown-preview .code-block-wrapper .copy-btn:hover {
-  background: var(--btn-primary-bg);
-  border-color: transparent;
-  color: var(--btn-primary-text);
-  box-shadow: 0 4px 12px var(--accent-glow);
-  transform: translateY(-1px);
+  background: var(--hover-bg-strong);
+  border-color: var(--border-color-strong);
+  color: var(--text-primary);
 }
 
 .markdown-preview .code-block-wrapper .copy-btn:active {
-  transform: translateY(0);
-}
-
-/* 代码块语言标签 */
-.markdown-preview .code-block-wrapper[data-lang]::after {
-  content: attr(data-lang);
-  position: absolute;
-  top: 0.6em;
-  left: 1em;
-  font-size: 0.7rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-muted);
-  font-family: 'SF Mono', 'Fira Code', monospace;
-  pointer-events: none;
+  background: var(--hover-bg);
 }
 
 /* 列表 */
@@ -767,7 +712,6 @@ a:hover {
   padding: 1em 1.25em;
   margin: 1.25em 0;
   color: var(--text-secondary);
-  border-left: 3px solid var(--accent-indigo);
   background: var(--hover-bg);
   border-radius: 0 10px 10px 0;
   position: relative;
@@ -970,7 +914,9 @@ a:hover {
 }
 
 /* 高亮代码块背景适配 */
-.hljs {
+.markdown-preview .hljs,
+.markdown-preview pre.hljs,
+.markdown-preview pre {
   background: transparent !important;
   border-radius: 0 !important;
 }

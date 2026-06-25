@@ -273,19 +273,21 @@ const instance = getCurrentInstance()
 const getPreviewEl = () => instance?.refs?.previewRef
 const getSplitEditorEl = () => instance?.refs?.splitEditorRef
 
-// 动态加载 highlight.js 主题
+// 动态加载 highlight.js 主题 - 始终使用深色主题
 let hljsStyleEl = null
 function loadHljsTheme(isDark) {
-  if (hljsStyleEl) {
-    hljsStyleEl.remove()
-  }
-  const theme = isDark ? 'github-dark' : 'github'
-  import(`../../node_modules/highlight.js/styles/${theme}.css`).then(() => {
-    // CSS 已加载
+  document.querySelectorAll('[data-hljs-theme]').forEach(el => el.remove())
+  
+  const theme = 'github-dark'
+  hljsStyleEl = document.createElement('link')
+  hljsStyleEl.rel = 'stylesheet'
+  hljsStyleEl.setAttribute('data-hljs-theme', theme)
+  
+  const localPath = `../../node_modules/highlight.js/styles/${theme}.css`
+  import(localPath).then(() => {
+    hljsStyleEl.href = localPath
+    document.head.appendChild(hljsStyleEl)
   }).catch(() => {
-    // 回退：创建 link 标签
-    hljsStyleEl = document.createElement('link')
-    hljsStyleEl.rel = 'stylesheet'
     hljsStyleEl.href = `https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/${theme}.min.css`
     document.head.appendChild(hljsStyleEl)
   })

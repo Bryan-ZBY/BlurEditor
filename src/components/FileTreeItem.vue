@@ -499,12 +499,12 @@ function formatDate(timestamp) {
   color: #475569;
 }
 .ft-item.light:hover {
-  background: rgba(99, 102, 241, 0.06);
+  background: rgba(59, 130, 246, 0.06);
   color: #0f172a;
 }
 .ft-item.light.current {
-  background: rgba(99, 102, 241, 0.1);
-  color: #4f46e5;
+  background: rgba(59, 130, 246, 0.1);
+  color: #2563eb;
   font-weight: 600;
 }
 .ft-item.light.current::before {
@@ -514,7 +514,7 @@ function formatDate(timestamp) {
   top: 20%;
   bottom: 20%;
   width: 3px;
-  background: linear-gradient(180deg, #6366f1, #8b5cf6);
+  background: linear-gradient(180deg, #3b82f6, #2563eb);
   border-radius: 0 2px 2px 0;
 }
 
@@ -522,12 +522,12 @@ function formatDate(timestamp) {
   color: #94a3b8;
 }
 .ft-item.dark:hover {
-  background: rgba(99, 102, 241, 0.1);
+  background: rgba(59, 130, 246, 0.1);
   color: #f1f5f9;
 }
 .ft-item.dark.current {
-  background: rgba(99, 102, 241, 0.15);
-  color: #818cf8;
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
   font-weight: 600;
 }
 .ft-item.dark.current::before {
@@ -537,15 +537,15 @@ function formatDate(timestamp) {
   top: 20%;
   bottom: 20%;
   width: 3px;
-  background: linear-gradient(180deg, #6366f1, #8b5cf6);
+  background: linear-gradient(180deg, #3b82f6, #2563eb);
   border-radius: 0 2px 2px 0;
-  box-shadow: 0 0 8px rgba(99, 102, 241, 0.4);
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
 }
 
 .ft-item.drag-over {
-  background: rgba(99, 102, 241, 0.15) !important;
-  border: 1px dashed var(--accent-indigo, #6366f1);
-  box-shadow: 0 0 12px var(--accent-glow, rgba(99,102,241,0.2));
+  background: rgba(59, 130, 246, 0.15) !important;
+  border: 1px dashed var(--accent-indigo, #3b82f6);
+  box-shadow: 0 0 12px var(--accent-glow, rgba(59,130,246,0.2));
 }
 
 /* 展开箭头 */
@@ -606,7 +606,7 @@ function formatDate(timestamp) {
   font-size: 0.8125rem;
   background: transparent;
   border: none;
-  border-bottom: 2px solid var(--accent-indigo, #6366f1);
+  border-bottom: 2px solid var(--accent-indigo, #3b82f6);
   outline: none;
   padding: 0;
   font-weight: 500;
@@ -664,11 +664,11 @@ function formatDate(timestamp) {
 
 .ft-context-menu.light {
   background: rgba(255, 255, 255, 0.95);
-  border: 1px solid rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(59, 130, 246, 0.12);
 }
 .ft-context-menu.dark {
   background: rgba(21, 21, 40, 0.95);
-  border: 1px solid rgba(99, 102, 241, 0.2);
+  border: 1px solid rgba(59, 130, 246, 0.2);
 }
 
 .ft-context-item {
@@ -691,11 +691,11 @@ function formatDate(timestamp) {
   color: #e2e8f0;
 }
 .ft-context-item:hover {
-  background: rgba(99, 102, 241, 0.08);
+  background: rgba(59, 130, 246, 0.08);
   transform: translateX(2px);
 }
 .ft-context-menu.dark .ft-context-item:hover {
-  background: rgba(99, 102, 241, 0.15);
+  background: rgba(59, 130, 246, 0.15);
 }
 .ft-context-item.danger {
   color: #ef4444;
@@ -715,7 +715,7 @@ function formatDate(timestamp) {
 .ft-context-divider {
   height: 1px;
   margin: 0.375rem 0;
-  background: rgba(99, 102, 241, 0.1);
+  background: rgba(59, 130, 246, 0.1);
 }
 
 /* 上下文菜单动画 */
@@ -755,11 +755,11 @@ function formatDate(timestamp) {
 
 .ft-modal.light {
   background: #ffffff;
-  border-color: rgba(99, 102, 241, 0.1);
+  border-color: rgba(59, 130, 246, 0.1);
 }
 .ft-modal.dark {
   background: #151528;
-  border-color: rgba(99, 102, 241, 0.2);
+  border-color: rgba(59, 130, 246, 0.2);
 }
 
 .ft-modal-header {
@@ -770,10 +770,10 @@ function formatDate(timestamp) {
   border-bottom: 1px solid;
 }
 .ft-modal.light .ft-modal-header {
-  border-color: rgba(99, 102, 241, 0.1);
+  border-color: rgba(59, 130, 246, 0.1);
 }
 .ft-modal.dark .ft-modal-header {
-  border-color: rgba(99, 102, 241, 0.15);
+  border-color: rgba(59, 130, 246, 0.15);
 }
 .ft-modal-header h3 {
   margin: 0;
@@ -869,11 +869,11 @@ function formatDate(timestamp) {
   border-bottom: 1px solid;
 }
 .ft-modal.light .ft-detail-row {
-  border-color: rgba(99, 102, 241, 0.06);
+  border-color: rgba(59, 130, 246, 0.06);
   color: #475569;
 }
 .ft-modal.dark .ft-detail-row {
-  border-color: rgba(99, 102, 241, 0.1);
+  border-color: rgba(59, 130, 246, 0.1);
   color: #94a3b8;
 }
 .ft-detail-row span:last-child {
@@ -938,21 +938,21 @@ function formatDate(timestamp) {
   padding-left: 1.5rem;
 }
 .ft-move-option:hover {
-  background: rgba(99, 102, 241, 0.08);
-  color: #4f46e5;
+  background: rgba(59, 130, 246, 0.08);
+  color: #2563eb;
 }
 .ft-move-option.dark:hover {
-  background: rgba(99, 102, 241, 0.15);
-  color: #818cf8;
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
 }
 .ft-move-option.active {
-  background: rgba(99, 102, 241, 0.12);
-  color: #4f46e5;
+  background: rgba(59, 130, 246, 0.12);
+  color: #2563eb;
   font-weight: 600;
 }
 .ft-move-option.dark.active {
-  background: rgba(99, 102, 241, 0.2);
-  color: #818cf8;
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
 }
 
 .ft-modal-footer {
@@ -964,10 +964,10 @@ function formatDate(timestamp) {
   margin-top: 0.75rem;
 }
 .ft-modal.light .ft-modal-footer {
-  border-color: rgba(99, 102, 241, 0.1);
+  border-color: rgba(59, 130, 246, 0.1);
 }
 .ft-modal.dark .ft-modal-footer {
-  border-color: rgba(99, 102, 241, 0.15);
+  border-color: rgba(59, 130, 246, 0.15);
 }
 
 .ft-btn-secondary {
@@ -981,20 +981,20 @@ function formatDate(timestamp) {
   background: transparent;
 }
 .ft-modal.light .ft-btn-secondary {
-  border-color: rgba(99, 102, 241, 0.2);
+  border-color: rgba(59, 130, 246, 0.2);
   color: #475569;
 }
 .ft-modal.light .ft-btn-secondary:hover {
-  background: rgba(99, 102, 241, 0.06);
-  border-color: rgba(99, 102, 241, 0.3);
+  background: rgba(59, 130, 246, 0.06);
+  border-color: rgba(59, 130, 246, 0.3);
 }
 .ft-modal.dark .ft-btn-secondary {
-  border-color: rgba(99, 102, 241, 0.2);
+  border-color: rgba(59, 130, 246, 0.2);
   color: #94a3b8;
 }
 .ft-modal.dark .ft-btn-secondary:hover {
-  background: rgba(99, 102, 241, 0.1);
-  border-color: rgba(99, 102, 241, 0.3);
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.3);
 }
 
 .ft-btn-primary {
@@ -1005,13 +1005,13 @@ function formatDate(timestamp) {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s ease;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
   color: white;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 .ft-btn-primary:hover {
   transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
 }
 .ft-btn-primary:active {
   transform: translateY(0);
