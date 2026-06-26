@@ -604,7 +604,9 @@ a:hover {
   overflow-x: auto;
   margin: 0;
   line-height: 1.6;
-  word-wrap: normal;
+  word-wrap: break-word;
+  word-break: break-all;
+  white-space: pre-wrap;
   background-color: transparent;
   border: none;
   font-size: 100%;

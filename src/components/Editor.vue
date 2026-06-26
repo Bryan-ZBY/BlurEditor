@@ -44,16 +44,6 @@
                 <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h7"/>
               </svg>
             </button>
-            <!-- 全局搜索 -->
-            <button
-              @click="showGlobalSearch = true"
-              class="icon-btn"
-              title="全局搜索 (Ctrl+F)"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-              </svg>
-            </button>
             <!-- 导出 -->
             <div class="export-wrapper">
               <button
@@ -143,15 +133,15 @@
         <!-- 编辑器内容区 -->
         <div class="editor-content">
           <Transition name="crossfade" mode="out-in">
-            <textarea
-              v-if="!isPreviewMode"
-              :value="content"
-              ref="editorRef"
-              class="editor-textarea"
-              placeholder="开始输入 Markdown 内容..."
-              @input="handleInput"
-              key="editor"
-            ></textarea>
+            <div v-if="!isPreviewMode" class="editor-wrapper" key="editor">
+              <textarea
+                :value="content"
+                ref="editorRef"
+                class="editor-textarea"
+                placeholder="开始输入 Markdown 内容..."
+                @input="handleInput"
+              ></textarea>
+            </div>
 
             <div v-else class="preview-container" key="preview">
               <div
@@ -204,15 +194,6 @@
         @scrollToHeading="handleScrollToHeading"
       />
     </div>
-
-    <!-- 全局搜索 -->
-    <GlobalSearch
-      :visible="showGlobalSearch"
-      :isDark="isDark"
-      :files="files"
-      @close="showGlobalSearch = false"
-      @open="handleGlobalSearchOpen"
-    />
   </div>
 </template>
 
@@ -224,7 +205,6 @@ import mermaid from 'mermaid'
 
 import EditorTabs from './EditorTabs.vue'
 import DocumentOutline from './DocumentOutline.vue'
-import GlobalSearch from './GlobalSearch.vue'
 
 import { useTabs } from '../composables/useTabs.js'
 import { exportAsMarkdown, exportAsHTML, exportAsPlainText, copyAsRichText } from '../utils/exportUtils.js'
@@ -259,15 +239,9 @@ const isSyncing = ref(false)
 
 const showOutline = ref(false)
 const showExportMenu = ref(false)
-const showGlobalSearch = ref(false)
 const showTabs = ref(true)
 
 const { tabs, activeTabId, openTab, closeTab, closeOtherTabs, closeLeftTabs, closeRightTabs, closeAllTabs, setActiveTab, setTabDirty, isTabDirty, updateTabName, moveTab, togglePinTab } = useTabs()
-
-function handleGlobalSearchOpen(fileId) {
-  emit('globalSearchOpen', fileId)
-  showGlobalSearch.value = false
-}
 
 const instance = getCurrentInstance()
 const getPreviewEl = () => instance?.refs?.previewRef
@@ -576,13 +550,6 @@ onMounted(() => {
     })
   }
 
-  document.addEventListener('keydown', (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
-      e.preventDefault()
-      showGlobalSearch.value = true
-    }
-  })
-
   document.addEventListener('click', (e) => {
     if (showExportMenu.value && !e.target.closest('.export-wrapper')) {
       showExportMenu.value = false
@@ -888,6 +855,14 @@ defineExpose({ editorRef, splitEditorRef })
   min-height: 0;
   position: relative;
   overflow: hidden;
+}
+
+.editor-wrapper {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  position: relative;
 }
 
 .editor-textarea {

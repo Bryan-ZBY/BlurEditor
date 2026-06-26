@@ -99,7 +99,7 @@
         </div>
 
         <div class="search-footer">
-          <span><kbd>Ctrl</kbd>+<kbd>F</kbd> 全局搜索</span>
+          <span><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> 全局搜索</span>
         </div>
       </div>
     </div>
