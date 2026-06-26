@@ -29,6 +29,16 @@
             <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
           </svg>
         </button>
+        <button
+          @click="showSortMenu = !showSortMenu"
+          class="fm-action-btn"
+          :class="{ active: showSortMenu }"
+          title="排序"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 4h13M3 16h13M16 4l7 7m0 0l-7 7m7-7H3" />
+          </svg>
+        </button>
       </div>
     </div>
 
@@ -49,6 +59,32 @@
       </div>
     </Transition>
 
+    <Transition name="slide">
+      <div v-if="showSortMenu" class="fm-sort-menu">
+        <button
+          v-for="option in sortOptions"
+          :key="option.value"
+          @click="handleSort(option.value)"
+          class="fm-sort-item"
+          :class="{ active: sortMode === option.value }"
+        >
+          <svg v-if="option.icon" xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path v-if="option.icon === 'name'" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+          </svg>
+          <svg v-else-if="option.icon === 'date'" xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+          </svg>
+          <svg v-else-if="option.icon === 'size'" xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+          </svg>
+          <span>{{ option.label }}</span>
+          <svg v-if="sortMode === option.value" xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+          </svg>
+        </button>
+      </div>
+    </Transition>
+
     <div class="fm-body custom-scrollbar">
       <TransitionGroup name="list" tag="div">
         <FileTreeItem
@@ -60,6 +96,7 @@
           :expanded-ids="expandedIds"
           :is-dark="isDark"
           :get-children="getChildren"
+          :get-sorted-files="getSortedFiles"
           :root-files="rootFiles"
           :style="{ animationDelay: index * 30 + 'ms' }"
           @select="$emit('selectFile', $event)"
@@ -134,18 +171,30 @@ const props = defineProps({
   archivedFiles: Array,
   currentFileId: String,
   getChildren: Function,
-  isDark: Boolean
+  isDark: Boolean,
+  sortMode: String,
+  getSortedFiles: Function
 })
 
 const emit = defineEmits([
-  'selectFile', 'createFile', 'createFolder', 'moveFile', 'unarchiveFile', 'renameFile', 'openImport'
+  'selectFile', 'createFile', 'createFolder', 'moveFile', 'unarchiveFile', 'renameFile', 'openImport', 'setSortMode'
 ])
 
 const showNewMenu = ref(false)
 const showArchived = ref(false)
+const showSortMenu = ref(false)
 const expandedIds = ref(new Set())
 
+const sortOptions = [
+  { value: 'name', label: '按名称', icon: 'name' },
+  { value: 'date', label: '按时间', icon: 'date' },
+  { value: 'size', label: '按大小', icon: 'size' }
+]
+
 const displayedFiles = computed(() => {
+  if (props.getSortedFiles) {
+    return props.getSortedFiles(props.rootFiles)
+  }
   return props.rootFiles
 })
 
@@ -167,6 +216,11 @@ function createNewFolder() {
   emit('createFolder', null)
 }
 
+function handleSort(mode) {
+  emit('setSortMode', mode)
+  showSortMenu.value = false
+}
+
 watch(showNewMenu, (val) => {
   if (val) {
     setTimeout(() => {
@@ -180,11 +234,37 @@ watch(showNewMenu, (val) => {
     }, 0)
   }
 })
+
+watch(showSortMenu, (val) => {
+  if (val) {
+    setTimeout(() => {
+      const closeHandler = (e) => {
+        if (!e.target.closest('.fm-action-btn') && !e.target.closest('.fm-sort-menu')) {
+          showSortMenu.value = false
+          document.removeEventListener('click', closeHandler)
+        }
+      }
+      document.addEventListener('click', closeHandler)
+    }, 0)
+  }
+})
+
+function expandToFile(fileId, parentFolderIds) {
+  parentFolderIds.forEach(id => expandedIds.value.add(id))
+  nextTick(() => {
+    const fileEl = document.querySelector(`.ft-item[data-file-id="${fileId}"]`)
+    if (fileEl) {
+      fileEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+    }
+  })
+}
+
+defineExpose({ expandToFile })
 </script>
 
 <style scoped>
 .file-manager {
-  width: 16rem;
+  width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -281,6 +361,61 @@ watch(showNewMenu, (val) => {
   border-bottom: 1px solid var(--border-color, rgba(99,102,241,0.1));
   background: var(--hover-bg, rgba(0,0,0,0.02));
   flex-shrink: 0;
+}
+
+/* 排序菜单 */
+.fm-sort-menu {
+  padding: 0.25rem;
+  border-bottom: 1px solid var(--border-color, rgba(99,102,241,0.1));
+  background: var(--hover-bg, rgba(0,0,0,0.02));
+  flex-shrink: 0;
+}
+
+.fm-sort-item {
+  width: 100%;
+  text-align: left;
+  padding: 0.4375rem 0.625rem;
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary, #475569);
+  transition: all 0.15s ease;
+  margin-bottom: 0.125rem;
+}
+
+.fm-sort-item:last-child {
+  margin-bottom: 0;
+}
+
+.fm-sort-item:hover {
+  background: var(--hover-bg-strong, rgba(99,102,241,0.08));
+  color: var(--accent-indigo, #6366f1);
+  transform: translateX(2px);
+}
+
+.fm-sort-item.active {
+  background: var(--accent-indigo, #6366f1);
+  color: white;
+}
+
+.fm-sort-item.active svg {
+  color: white;
+}
+
+.fm-sort-item svg {
+  flex-shrink: 0;
+  color: var(--text-muted, #94a3b8);
+  transition: color 0.15s ease;
+}
+
+.fm-sort-item:hover svg {
+  color: var(--accent-indigo, #6366f1);
 }
 
 .fm-new-item {

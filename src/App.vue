@@ -1,14 +1,16 @@
 <template>
   <div class="flex w-screen h-screen overflow-hidden app-root" :class="themeClass">
     <!-- 文件管理器 -->
-    <div class="relative file-manager-wrapper">
+    <div class="relative file-manager-wrapper" :style="{ width: fileManagerWidth + 'px' }">
       <FileManager
+        ref="fileManagerRef"
         :root-files="rootFiles"
         :archived-files="archivedFiles"
         :current-file-id="currentFileId"
         :get-children="getChildren"
         :is-dark="isDark"
         :sort-mode="fileSystem.sortMode.value"
+        :get-sorted-files="fileSystem.getSortedFiles"
         @select-file="handleSelectFile"
         @create-file="handleCreateFile"
         @create-folder="handleCreateFolder"
@@ -22,6 +24,14 @@
         @set-sort-mode="handleSetSortMode"
         @open-import="showImportModal = true"
       />
+    </div>
+
+    <div 
+      class="resize-handle" 
+      @mousedown="startFileManagerResize"
+      :class="{ 'is-resizing': isFileManagerResizing }"
+    >
+      <div class="resize-line"></div>
     </div>
 
     <!-- 编辑器 -->
@@ -105,14 +115,17 @@ import ImportModal from './components/ImportModal.vue'
 import GlobalSearch from './components/GlobalSearch.vue'
 import { useFileSystem } from './composables/useFileSystem.js'
 import { useTheme } from './composables/useTheme.js'
+import { useTabs } from './composables/useTabs.js'
 
 const { theme, isDark, toggleTheme } = useTheme()
 const fileSystem = useFileSystem()
+const { closeTab } = useTabs()
 
 const showImportModal = ref(false)
 const showGlobalSearch = ref(false)
 
 const editorComponent = ref(null)
+const fileManagerRef = ref(null)
 const editorRef = computed(() => editorComponent.value?.editorRef)
 const splitEditorRef = computed(() => editorComponent.value?.splitEditorRef)
 
@@ -120,6 +133,30 @@ const isPreviewMode = ref(false)
 const isFullscreenPreview = ref(false)
 const splitPosition = ref(50)
 const isResizing = ref(false)
+
+const fileManagerWidth = ref(parseInt(localStorage.getItem('fileManagerWidth')) || 256)
+const isFileManagerResizing = ref(false)
+
+function startFileManagerResize(e) {
+  isFileManagerResizing.value = true
+  document.addEventListener('mousemove', onFileManagerResize)
+  document.addEventListener('mouseup', stopFileManagerResize)
+}
+
+function onFileManagerResize(e) {
+  if (!isFileManagerResizing.value) return
+  const newWidth = e.clientX
+  if (newWidth > 120 && newWidth < window.innerWidth - 200) {
+    fileManagerWidth.value = newWidth
+    localStorage.setItem('fileManagerWidth', newWidth.toString())
+  }
+}
+
+function stopFileManagerResize() {
+  isFileManagerResizing.value = false
+  document.removeEventListener('mousemove', onFileManagerResize)
+  document.removeEventListener('mouseup', stopFileManagerResize)
+}
 
 const currentFileId = fileSystem.currentFileId
 const currentFile = fileSystem.currentFile
@@ -151,8 +188,22 @@ function handleCreateFolder(parentId) {
   fileSystem.createFolder(parentId)
 }
 
+function getDescendantFileIds(fileId) {
+  const ids = [fileId]
+  const file = fileSystem.files.value.find(f => f.id === fileId)
+  if (file && file.type === 'folder') {
+    const children = fileSystem.files.value.filter(f => f.parentId === fileId)
+    children.forEach(child => {
+      ids.push(...getDescendantFileIds(child.id))
+    })
+  }
+  return ids
+}
+
 function handleDeleteFile(fileId) {
+  const idsToClose = getDescendantFileIds(fileId)
   fileSystem.deleteFile(fileId)
+  idsToClose.forEach(id => closeTab(id))
 }
 
 function handleRenameFile({ fileId, newName }) {
@@ -194,6 +245,10 @@ function handleUpdateContent(content) {
 
 function handleTabChange(fileId) {
   fileSystem.setCurrentFile(fileId)
+  const parentIds = fileSystem.getParentFolderIds(fileId)
+  if (parentIds.length > 0 && fileManagerRef.value) {
+    fileManagerRef.value.expandToFile(fileId, parentIds)
+  }
 }
 
 function handleGlobalSearchOpen(fileId) {
@@ -273,7 +328,7 @@ onMounted(() => {
   })
 
   window.addEventListener('file-delete', (e) => {
-    fileSystem.deleteFile(e.detail.fileId)
+    handleDeleteFile(e.detail.fileId)
   })
 })
 </script>
@@ -285,8 +340,41 @@ onMounted(() => {
 }
 
 .file-manager-wrapper {
-  border-right: 1px solid var(--border-color);
-  transition: border-color var(--transition-normal);
+  flex-shrink: 0;
+}
+
+.resize-handle {
+  width: 4px;
+  cursor: col-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background var(--transition-fast);
+}
+
+.resize-handle:hover {
+  background: rgba(139, 92, 246, 0.15);
+}
+
+.resize-handle.is-resizing {
+  background: rgba(139, 92, 246, 0.3);
+}
+
+.resize-line {
+  width: 1px;
+  height: 32px;
+  background: var(--border-color);
+  transition: background var(--transition-fast);
+}
+
+.resize-handle:hover .resize-line {
+  background: var(--accent-color);
+}
+
+.resize-handle.is-resizing .resize-line {
+  background: var(--accent-color);
+  height: 48px;
 }
 
 .editor-wrapper {

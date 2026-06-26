@@ -11,6 +11,7 @@
     <div
       v-if="file.type === 'folder'"
       class="ft-item"
+      :data-file-id="file.id"
       :class="[
         isDraggingOver ? 'drag-over' : '',
         isDark ? 'dark' : 'light'
@@ -50,6 +51,7 @@
     <div
       v-else
       class="ft-item"
+      :data-file-id="file.id"
       :class="[
         isDraggingOver ? 'drag-over' : '',
         isCurrent ? 'current' : '',
@@ -76,6 +78,7 @@
       </template>
       <span v-else class="ft-name">{{ file.name }}</span>
       <span class="ft-size">{{ formatSize(file.content?.length || 0) }}</span>
+      <span class="ft-date">{{ formatDate(file.updatedAt) }}</span>
     </div>
 
     <Transition name="tree">
@@ -89,6 +92,7 @@
           :expanded-ids="expandedIds"
           :is-dark="isDark"
           :get-children="getChildren"
+          :get-sorted-files="getSortedFiles"
           @select="$emit('select', $event)"
           @toggle="$emit('toggle', $event)"
           @create-file="$emit('create-file', $event)"
@@ -152,6 +156,17 @@
         </div>
       </Transition>
     </Teleport>
+
+    <!-- 删除确认弹窗 -->
+    <ConfirmModal
+      :visible="showDeleteConfirm"
+      :is-dark="isDark"
+      title="确认删除"
+      :message="deleteConfirmMessage"
+      icon-type="warning"
+      @confirm="handleDeleteConfirm"
+      @cancel="showDeleteConfirm = false"
+    />
 
     <!-- 文件详情弹窗 -->
     <Transition name="modal">
@@ -281,6 +296,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import ConfirmModal from './ConfirmModal.vue'
 
 const props = defineProps({
   file: Object,
@@ -289,6 +305,7 @@ const props = defineProps({
   expandedIds: Object,
   isDark: Boolean,
   getChildren: Function,
+  getSortedFiles: Function,
   rootFiles: Array
 })
 
@@ -298,7 +315,16 @@ const emit = defineEmits([
 
 const isCurrent = computed(() => props.file.id === props.currentFileId)
 const isExpanded = computed(() => props.expandedIds.has(props.file.id))
-const children = computed(() => props.getChildren(props.file.id))
+const children = computed(() => {
+  const rawChildren = props.getChildren(props.file.id)
+  if (props.getSortedFiles) {
+    return props.getSortedFiles(rawChildren)
+  }
+  return rawChildren
+})
+const deleteConfirmMessage = computed(() => {
+  return `确定要删除 "${deleteFile.value?.name || ''}" 吗？此操作无法撤销。`
+})
 const allFolders = computed(() => {
   const folders = []
   const rootItems = props.rootFiles || []
@@ -326,6 +352,8 @@ const selectedFolderId = ref(null)
 const isRenaming = ref(false)
 const renameValue = ref('')
 const renameInput = ref(null)
+const showDeleteConfirm = ref(false)
+const deleteFile = ref(null)
 
 function showContextMenu(e, file) {
   contextFile.value = file
@@ -372,9 +400,8 @@ function handleAction(action) {
       showFileDetails.value = true
       break
     case 'delete':
-      if (confirm(`确定要删除"${file.name}"吗？`)) {
-        window.dispatchEvent(new CustomEvent('file-delete', { detail: { fileId: file.id } }))
-      }
+      deleteFile.value = file
+      showDeleteConfirm.value = true
       break
     case 'move':
       showMoveDialog.value = true
@@ -390,6 +417,15 @@ function handleAction(action) {
       emit('create-folder', file.id)
       break
   }
+}
+
+function handleDeleteConfirm() {
+  const file = deleteFile.value
+  if (file) {
+    window.dispatchEvent(new CustomEvent('file-delete', { detail: { fileId: file.id } }))
+  }
+  showDeleteConfirm.value = false
+  deleteFile.value = null
 }
 
 function confirmMove() {
@@ -619,6 +655,26 @@ function formatDate(timestamp) {
   font-size: 0.7rem;
   opacity: 0.5;
   font-variant-numeric: tabular-nums;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.ft-date {
+  font-size: 0.65rem;
+  opacity: 0;
+  width: 0;
+  overflow: hidden;
+  font-variant-numeric: tabular-nums;
+  margin-left: 0;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  pointer-events: none;
+}
+
+.ft-item:hover .ft-date {
+  opacity: 0.5;
+  width: auto;
+  margin-left: 0.75rem;
 }
 
 /* 重命名输入框 */

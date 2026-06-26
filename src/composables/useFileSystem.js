@@ -321,6 +321,16 @@ export function useFileSystem() {
     return path.join(' / ')
   }
 
+  function getParentFolderIds(fileId) {
+    const ids = []
+    let current = files.value.find(f => f.id === fileId)
+    while (current && current.parentId) {
+      ids.unshift(current.parentId)
+      current = files.value.find(f => f.id === current.parentId)
+    }
+    return ids
+  }
+
   function addFileTag(fileId, tagId) {
     const file = files.value.find(f => f.id === fileId)
     if (file) {
@@ -409,6 +419,7 @@ export function useFileSystem() {
     setCurrentFile,
     exportFile,
     getFilePath,
+    getParentFolderIds,
     setSortMode,
     addFileTag,
     removeFileTag,

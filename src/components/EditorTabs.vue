@@ -556,7 +556,7 @@ defineExpose({ isTabDirty })
   transform-origin: top left;
 }
 
-.editor-tabs.is-dark .context-menu {
+.context-menu.is-dark {
   --context-menu-bg: rgba(21, 21, 40, 0.95);
   --context-menu-border: rgba(99, 102, 241, 0.2);
   --context-menu-text: #e2e8f0;
