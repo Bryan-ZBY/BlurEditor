@@ -47,56 +47,58 @@
         </button>
       </div>
     </div>
-    <Transition name="context">
-      <div v-if="contextMenu.visible" class="context-menu" :style="contextMenuStyle">
-        <div class="context-menu-item" @click="handleRename">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-          </svg>
-          <span>重命名</span>
+    <Teleport to="body">
+      <Transition name="context">
+        <div v-if="contextMenu.visible" class="context-menu" :class="{ 'is-dark': isDark }" :style="contextMenuStyle">
+          <div class="context-menu-item" @click="handleRename">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+            <span>重命名</span>
+          </div>
+          <div class="context-menu-divider"></div>
+          <div class="context-menu-item" @click="handleCloseTab">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            <span>关闭</span>
+            <span class="shortcut">Ctrl+W</span>
+          </div>
+          <div class="context-menu-item" @click="handleCloseOthers">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
+            </svg>
+            <span>关闭其他</span>
+          </div>
+          <div class="context-menu-item" @click="handleCloseLeft">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+            </svg>
+            <span>关闭左侧</span>
+          </div>
+          <div class="context-menu-item" @click="handleCloseRight">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+            </svg>
+            <span>关闭右侧</span>
+          </div>
+          <div class="context-menu-divider"></div>
+          <div class="context-menu-item" @click="handleCloseAll">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            <span>全部关闭</span>
+          </div>
+          <div class="context-menu-divider"></div>
+          <div class="context-menu-item" @click="handleTogglePin">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+            </svg>
+            <span>{{ contextMenu.tab?.isPinned ? '取消固定' : '固定标签' }}</span>
+          </div>
         </div>
-        <div class="context-menu-divider"></div>
-        <div class="context-menu-item" @click="handleCloseTab">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-          <span>关闭</span>
-          <span class="shortcut">Ctrl+W</span>
-        </div>
-        <div class="context-menu-item" @click="handleCloseOthers">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
-          </svg>
-          <span>关闭其他</span>
-        </div>
-        <div class="context-menu-item" @click="handleCloseLeft">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-          </svg>
-          <span>关闭左侧</span>
-        </div>
-        <div class="context-menu-item" @click="handleCloseRight">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-          </svg>
-          <span>关闭右侧</span>
-        </div>
-        <div class="context-menu-divider"></div>
-        <div class="context-menu-item" @click="handleCloseAll">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-          </svg>
-          <span>全部关闭</span>
-        </div>
-        <div class="context-menu-divider"></div>
-        <div class="context-menu-item" @click="handleTogglePin">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-          </svg>
-          <span>{{ contextMenu.tab?.isPinned ? '取消固定' : '固定标签' }}</span>
-        </div>
-      </div>
-    </Transition>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
@@ -134,10 +136,32 @@ const renamingTabId = ref(null)
 const renameValue = ref('')
 const renameInput = ref(null)
 
-const contextMenuStyle = computed(() => ({
-  left: contextMenu.value.x + 'px',
-  top: contextMenu.value.y + 'px'
-}))
+const CONTEXT_MENU_WIDTH = 190
+const CONTEXT_MENU_HEIGHT = 280
+
+const contextMenuStyle = computed(() => {
+  let left = contextMenu.value.x
+  let top = contextMenu.value.y
+
+  const windowWidth = window.innerWidth
+  const windowHeight = window.innerHeight
+
+  if (left + CONTEXT_MENU_WIDTH > windowWidth) {
+    left = windowWidth - CONTEXT_MENU_WIDTH - 8
+  }
+
+  if (top + CONTEXT_MENU_HEIGHT > windowHeight) {
+    top = windowHeight - CONTEXT_MENU_HEIGHT - 8
+  }
+
+  left = Math.max(8, left)
+  top = Math.max(8, top)
+
+  return {
+    left: left + 'px',
+    top: top + 'px'
+  }
+})
 
 function isTabDirty(fileId) {
   return false

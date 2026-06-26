@@ -107,49 +107,51 @@
     </Transition>
 
     <!-- 上下文菜单 -->
-    <Transition name="context">
-      <div
-        v-if="contextMenuVisible"
-        class="ft-context-menu"
-        :class="isDark ? 'dark' : 'light'"
-        :style="{ left: contextMenuX + 'px', top: contextMenuY + 'px' }"
-      >
-        <button @click="handleAction('details')" class="ft-context-item">
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-          <span>详情</span>
-        </button>
-        <button @click="handleAction('rename')" class="ft-context-item">
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-          <span>重命名</span>
-        </button>
-        <button @click="handleAction('move')" class="ft-context-item">
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-          <span>移动到</span>
-        </button>
-        <template v-if="contextFile?.type === 'file'">
-          <div class="ft-context-divider"></div>
-          <button @click="handleAction('delete')" class="ft-context-item danger">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-            <span>删除</span>
+    <Teleport to="body">
+      <Transition name="context">
+        <div
+          v-if="contextMenuVisible"
+          class="ft-context-menu"
+          :class="isDark ? 'dark' : 'light'"
+          :style="{ left: contextMenuX + 'px', top: contextMenuY + 'px' }"
+        >
+          <button @click="handleAction('details')" class="ft-context-item">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+            <span>详情</span>
           </button>
-        </template>
-        <template v-else>
-          <button @click="handleAction('createFile')" class="ft-context-item">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-            <span>新建文件</span>
+          <button @click="handleAction('rename')" class="ft-context-item">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+            <span>重命名</span>
           </button>
-          <button @click="handleAction('createFolder')" class="ft-context-item">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
-            <span>新建文件夹</span>
+          <button @click="handleAction('move')" class="ft-context-item">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+            <span>移动到</span>
           </button>
-          <div class="ft-context-divider"></div>
-          <button @click="handleAction('delete')" class="ft-context-item danger">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-            <span>删除</span>
-          </button>
-        </template>
-      </div>
-    </Transition>
+          <template v-if="contextFile?.type === 'file'">
+            <div class="ft-context-divider"></div>
+            <button @click="handleAction('delete')" class="ft-context-item danger">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+              <span>删除</span>
+            </button>
+          </template>
+          <template v-else>
+            <button @click="handleAction('createFile')" class="ft-context-item">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+              <span>新建文件</span>
+            </button>
+            <button @click="handleAction('createFolder')" class="ft-context-item">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" /></svg>
+              <span>新建文件夹</span>
+            </button>
+            <div class="ft-context-divider"></div>
+            <button @click="handleAction('delete')" class="ft-context-item danger">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+              <span>删除</span>
+            </button>
+          </template>
+        </div>
+      </Transition>
+    </Teleport>
 
     <!-- 文件详情弹窗 -->
     <Transition name="modal">
@@ -327,8 +329,27 @@ const renameInput = ref(null)
 
 function showContextMenu(e, file) {
   contextFile.value = file
-  contextMenuX.value = e.clientX
-  contextMenuY.value = e.clientY
+
+  const menuWidth = 170
+  const menuHeight = 220
+  const windowWidth = window.innerWidth
+  const windowHeight = window.innerHeight
+
+  let x = e.clientX
+  let y = e.clientY
+
+  if (x + menuWidth > windowWidth) {
+    x = windowWidth - menuWidth - 8
+  }
+  if (y + menuHeight > windowHeight) {
+    y = windowHeight - menuHeight - 8
+  }
+
+  x = Math.max(8, x)
+  y = Math.max(8, y)
+
+  contextMenuX.value = x
+  contextMenuY.value = y
   contextMenuVisible.value = true
 
   const closeHandler = () => {

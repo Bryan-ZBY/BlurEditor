@@ -108,7 +108,9 @@
               :title="isFullscreenPreview ? '切换分屏' : '退出分屏'"
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h7"/>
+                <rect x="3" y="3" width="7" height="18" rx="1"/>
+                <rect x="14" y="3" width="7" height="18" rx="1"/>
+                <line x1="12" y1="3" x2="12" y2="21"/>
               </svg>
             </button>
             <!-- 预览切换 -->
@@ -137,7 +139,7 @@
               <textarea
                 :value="content"
                 ref="editorRef"
-                class="editor-textarea"
+                class="editor-textarea custom-scrollbar"
                 placeholder="开始输入 Markdown 内容..."
                 @input="handleInput"
               ></textarea>
@@ -152,7 +154,7 @@
                 <textarea
                   :value="content"
                   ref="splitEditorRef"
-                  class="editor-textarea split"
+                  class="editor-textarea split no-scrollbar"
                   placeholder="开始输入 Markdown 内容..."
                   @input="handleInput"
                   @scroll="syncPreviewScroll"
