@@ -142,6 +142,9 @@
                 class="editor-textarea custom-scrollbar"
                 placeholder="开始输入 Markdown 内容..."
                 @input="handleInput"
+                spellcheck="false"
+                autocorrect="off"
+                autocapitalize="off"
               ></textarea>
             </div>
 
@@ -158,6 +161,9 @@
                   placeholder="开始输入 Markdown 内容..."
                   @input="handleInput"
                   @scroll="syncPreviewScroll"
+                  spellcheck="false"
+                  autocorrect="off"
+                  autocapitalize="off"
                 ></textarea>
               </div>
 

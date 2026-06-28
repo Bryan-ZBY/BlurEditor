@@ -155,6 +155,12 @@ export function useTabs() {
     }
   }
 
+  function validateTabs(validFileIds) {
+    const validIds = new Set(validFileIds)
+    const invalidTabs = tabs.value.filter(t => !validIds.has(t.fileId))
+    invalidTabs.forEach(tab => closeTab(tab.fileId))
+  }
+
   watch([tabs, activeTabId], persist, { deep: true })
 
   return {
@@ -171,6 +177,7 @@ export function useTabs() {
     isTabDirty,
     updateTabName,
     moveTab,
-    togglePinTab
+    togglePinTab,
+    validateTabs
   }
 }

@@ -104,6 +104,16 @@
         @open="handleGlobalSearchOpen"
       />
     </Transition>
+
+    <!-- 保存提示 -->
+    <Transition name="fade-slide">
+      <div v-if="showSaveNotification" class="save-notification">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span>已保存</span>
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -116,13 +126,15 @@ import GlobalSearch from './components/GlobalSearch.vue'
 import { useFileSystem } from './composables/useFileSystem.js'
 import { useTheme } from './composables/useTheme.js'
 import { useTabs } from './composables/useTabs.js'
+import { useKeyboardShortcuts } from './composables/useKeyboardShortcuts.js'
 
 const { theme, isDark, toggleTheme } = useTheme()
 const fileSystem = useFileSystem()
-const { closeTab } = useTabs()
+const { closeTab, validateTabs } = useTabs()
 
 const showImportModal = ref(false)
 const showGlobalSearch = ref(false)
+const showSaveNotification = ref(false)
 
 const editorComponent = ref(null)
 const fileManagerRef = ref(null)
@@ -317,6 +329,19 @@ const stopResize = () => {
   document.removeEventListener('mouseup', stopResize)
 }
 
+const handleSave = () => {
+  if (currentFile.value) {
+    showSaveNotification.value = true
+    setTimeout(() => {
+      showSaveNotification.value = false
+    }, 2000)
+  }
+}
+
+useKeyboardShortcuts({
+  onSave: handleSave
+})
+
 import { onMounted } from 'vue'
 
 onMounted(() => {
@@ -330,6 +355,9 @@ onMounted(() => {
   window.addEventListener('file-delete', (e) => {
     handleDeleteFile(e.detail.fileId)
   })
+
+  const validFileIds = fileSystem.files.value.filter(f => f.type === 'file').map(f => f.id)
+  validateTabs(validFileIds)
 })
 </script>
 
@@ -471,5 +499,41 @@ onMounted(() => {
 .modal-leave-to :deep(.global-search-modal) {
   transform: scale(0.96) translateY(8px);
   opacity: 0;
+}
+
+/* 保存提示 */
+.save-notification {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: rgba(16, 185, 129, 0.9);
+  color: white;
+  border-radius: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  backdrop-filter: blur(8px);
+}
+
+/* 保存提示动画 */
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fade-slide-enter-from {
+  opacity: 0;
+  transform: translateX(-50%) translateY(12px);
+}
+
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-12px);
 }
 </style>
