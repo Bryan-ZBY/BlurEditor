@@ -1,17 +1,33 @@
-import { ref, computed } from 'vue'
+import { computed, ref } from 'vue'
 
 const STORAGE_KEY = 'file_system_v1'
 const CURRENT_FILE_KEY = 'current_file_id'
 const SORT_MODE_KEY = 'file_sort_mode'
+const MAX_RECENT_FILES = 12
 
 function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).substring(2, 9)
 }
 
-const sortMode = ref(localStorage.getItem(SORT_MODE_KEY) || 'name')
+function normalizeFile(file, now = Date.now()) {
+  if (!file || typeof file !== 'object') return null
+  return {
+    id: file.id || generateId(),
+    name: file.name || 'untitled.md',
+    type: file.type || 'file',
+    parentId: file.parentId ?? null,
+    content: file.content || '',
+    tags: Array.isArray(file.tags) ? file.tags : [],
+    isArchived: Boolean(file.isArchived),
+    isFavorite: Boolean(file.isFavorite),
+    createdAt: Number.isFinite(file.createdAt) ? file.createdAt : now,
+    updatedAt: Number.isFinite(file.updatedAt) ? file.updatedAt : now,
+    lastOpenedAt: Number.isFinite(file.lastOpenedAt) ? file.lastOpenedAt : now,
+    order: Number.isFinite(file.order) ? file.order : now
+  }
+}
 
 function createDefaultFiles() {
-  const rootId = generateId()
   const welcomeId = generateId()
   return {
     files: [
@@ -20,63 +36,13 @@ function createDefaultFiles() {
         name: '欢迎使用.md',
         type: 'file',
         parentId: null,
-        content: `# 欢迎使用 Markdown 编辑器
-
-这是一个**纯粹**的 Markdown 编辑和预览工具。
-
-## 功能特点
-
-- 文件管理：支持新建、重命名、删除、移动文件和文件夹
-- 实时预览：支持分栏预览和全屏预览
-- 语法高亮：代码块自动语法高亮
-- 主题切换：支持白天/夜间模式
-
-## Markdown 语法示例
-
-### 标题
-# 一级标题
-## 二级标题
-### 三级标题
-
-### 文本样式
-**粗体**、*斜体*、~~删除线~~、\`行内代码\`
-
-### 列表
-- 无序列表项 1
-- 无序列表项 2
-  - 嵌套项
-
-1. 有序列表项 1
-2. 有序列表项 2
-
-### 代码块
-\`\`\`javascript
-function greet(name) {
-  return \`Hello, \${name}!\`;
-}
-
-console.log(greet('World'));
-\`\`\`
-
-### 引用
-> 这是一段引用文字
-> 可以有多行
-
-### 表格
-| 名称 | 类型 | 说明 |
-|------|------|------|
-| id | string | 唯一标识 |
-| name | string | 文件名称 |
-
-### 链接
-[Markdown 指南](https://www.markdownguide.org/)
-
----
-
-开始你的创作吧！`,
+        content: `# 欢迎使用 Markdown 编辑器\n\n这是一个默认示例文件。\n\n## 功能清单\n\n- 文件管理：新建/删除/归档\n- 编辑/预览\n- 主题切换\n- 命令面板\n- 文档大纲\n\n## 示例标题\n\n### 子标题\n\n#### 三级标题\n\nMarkdown 代码示例：\n\n\`\`\`javascript\nfunction hello() {\n  return 'hello world'\n}\n\`\`\`\n`,
         isArchived: false,
+        isFavorite: true,
+        tags: [],
         createdAt: Date.now(),
         updatedAt: Date.now(),
+        lastOpenedAt: Date.now(),
         order: 0
       }
     ],
@@ -86,9 +52,21 @@ console.log(greet('World'));
 
 function loadFromStorage() {
   try {
-    const data = localStorage.getItem(STORAGE_KEY)
-    if (data) {
-      return JSON.parse(data)
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (!raw) return null
+    const data = JSON.parse(raw)
+    if (!data || !Array.isArray(data.files)) return null
+
+    const now = Date.now()
+    const files = data.files
+      .map((file) => normalizeFile(file, now))
+      .filter(Boolean)
+
+    const currentFileId = data.currentFileId
+    const exists = files.some((file) => file.id === currentFileId && file.type === 'file' && !file.isArchived)
+    return {
+      files,
+      currentFileId: exists ? currentFileId : null
     }
   } catch (e) {
     console.error('Failed to load file system:', e)
@@ -104,30 +82,53 @@ function saveToStorage(files, currentFileId) {
   }
 }
 
+const sortMode = ref(localStorage.getItem(SORT_MODE_KEY) || 'name')
+
 export function useFileSystem() {
   const saved = loadFromStorage()
   const defaultData = createDefaultFiles()
 
   const files = ref(saved?.files || defaultData.files)
   const currentFileId = ref(saved?.currentFileId || defaultData.currentFileId)
+  const now = Date.now()
+
+  if (!currentFileId.value || !files.value.some((f) => f.id === currentFileId.value && f.type === 'file')) {
+    const firstFile = files.value.find((f) => f.type === 'file' && !f.isArchived)
+    currentFileId.value = firstFile ? firstFile.id : null
+  }
+  files.value.forEach((file) => {
+    if (!Number.isFinite(file.createdAt)) file.createdAt = now
+    if (!Number.isFinite(file.updatedAt)) file.updatedAt = now
+    if (!Number.isFinite(file.lastOpenedAt)) file.lastOpenedAt = file.createdAt
+  })
 
   const currentFile = computed(() =>
-    files.value.find(f => f.id === currentFileId.value) || null
+    files.value.find((f) => f.id === currentFileId.value) || null
   )
 
   const rootFiles = computed(() =>
     files.value
-      .filter(f => f.parentId === null && !f.isArchived)
+      .filter((f) => f.parentId === null && !f.isArchived)
       .sort((a, b) => a.order - b.order)
   )
 
-  const archivedFiles = computed(() =>
-    files.value.filter(f => f.isArchived)
-  )
+  const archivedFiles = computed(() => files.value.filter((f) => f.isArchived))
+
+  const favoriteFiles = computed(() => {
+    const result = files.value.filter((f) => !f.isArchived && f.isFavorite)
+    return result.sort((a, b) => (b.lastOpenedAt || b.updatedAt) - (a.lastOpenedAt || a.updatedAt))
+  })
+
+  const recentFiles = computed(() => {
+    return files.value
+      .filter((f) => f.type === 'file' && !f.isArchived)
+      .sort((a, b) => (b.lastOpenedAt || b.updatedAt) - (a.lastOpenedAt || a.updatedAt))
+      .slice(0, MAX_RECENT_FILES)
+  })
 
   function getChildren(parentId) {
     return files.value
-      .filter(f => f.parentId === parentId && !f.isArchived)
+      .filter((f) => f.parentId === parentId && !f.isArchived)
       .sort((a, b) => a.order - b.order)
   }
 
@@ -135,18 +136,18 @@ export function useFileSystem() {
     saveToStorage(files.value, currentFileId.value)
   }
 
-  function createFile(parentId = null, name = '未命名.md', content = '', tags = []) {
-    const siblings = files.value.filter(f => f.parentId === parentId && !f.isArchived)
+  function createFile(parentId = null, name = '新建文档.md', content = '', tags = []) {
+    const siblings = files.value.filter((f) => f.parentId === parentId && !f.isArchived)
     const baseName = name.replace(/\.md$/, '')
     const ext = '.md'
-    
+
     let finalName = name
     let counter = 1
-    while (siblings.some(s => s.name === finalName)) {
+    while (siblings.some((s) => s.name === finalName)) {
       finalName = `${baseName}${counter}${ext}`
-      counter++
+      counter += 1
     }
-    
+
     const newFile = {
       id: generateId(),
       name: finalName,
@@ -155,8 +156,10 @@ export function useFileSystem() {
       content,
       tags,
       isArchived: false,
+      isFavorite: false,
       createdAt: Date.now(),
       updatedAt: Date.now(),
+      lastOpenedAt: Date.now(),
       order: Date.now()
     }
     files.value.push(newFile)
@@ -165,15 +168,15 @@ export function useFileSystem() {
   }
 
   function createFolder(parentId = null, name = '新建文件夹') {
-    const siblings = files.value.filter(f => f.parentId === parentId && !f.isArchived)
-    
+    const siblings = files.value.filter((f) => f.parentId === parentId && !f.isArchived)
+
     let finalName = name
     let counter = 1
-    while (siblings.some(s => s.name === finalName)) {
+    while (siblings.some((s) => s.name === finalName)) {
       finalName = `${name}${counter}`
-      counter++
+      counter += 1
     }
-    
+
     const newFolder = {
       id: generateId(),
       name: finalName,
@@ -181,8 +184,10 @@ export function useFileSystem() {
       parentId,
       content: '',
       isArchived: false,
+      isFavorite: false,
       createdAt: Date.now(),
       updatedAt: Date.now(),
+      lastOpenedAt: Date.now(),
       order: Date.now()
     }
     files.value.push(newFolder)
@@ -191,89 +196,85 @@ export function useFileSystem() {
   }
 
   function renameFile(fileId, newName) {
-    const file = files.value.find(f => f.id === fileId)
-    if (file) {
-      file.name = newName
-      file.updatedAt = Date.now()
-      persist()
-    }
+    const file = files.value.find((f) => f.id === fileId)
+    if (!file) return
+    file.name = newName
+    file.updatedAt = Date.now()
+    persist()
   }
 
   function deleteFile(fileId) {
-    const file = files.value.find(f => f.id === fileId)
+    const file = files.value.find((f) => f.id === fileId)
     if (!file) return
-
-    // 如果是文件夹，递归删除所有子项
     if (file.type === 'folder') {
-      const children = files.value.filter(f => f.parentId === fileId)
-      children.forEach(child => deleteFile(child.id))
+      const children = files.value.filter((f) => f.parentId === fileId)
+      children.forEach((child) => deleteFile(child.id))
     }
-
-    files.value = files.value.filter(f => f.id !== fileId)
-
+    files.value = files.value.filter((f) => f.id !== fileId)
     if (currentFileId.value === fileId) {
-      const remaining = files.value.filter(f => f.type === 'file')
-      currentFileId.value = remaining.length > 0 ? remaining[0].id : null
+      const remaining = files.value.filter((f) => f.type === 'file' && !f.isArchived)
+      currentFileId.value = remaining.length ? remaining[0].id : null
     }
     persist()
   }
 
-  function renameFile(fileId, newName) {
-    const file = files.value.find(f => f.id === fileId)
-    if (file) {
-      file.name = newName
-      file.updatedAt = Date.now()
-      persist()
-    }
-  }
-
   function moveFile(fileId, newParentId) {
-    const file = files.value.find(f => f.id === fileId)
-    if (file && file.id !== newParentId) {
-      // 防止将文件夹移动到自己的子文件夹中
-      if (file.type === 'folder') {
-        let parent = newParentId
-        while (parent) {
-          const p = files.value.find(f => f.id === parent)
-          if (!p) break
-          if (p.id === file.id) return
-          parent = p.parentId
-        }
+    const file = files.value.find((f) => f.id === fileId)
+    if (!file || file.id === newParentId) return
+
+    if (file.type === 'folder') {
+      let cursor = newParentId
+      while (cursor) {
+        if (cursor === file.id) return
+        const parent = files.value.find((f) => f.id === cursor)
+        cursor = parent?.parentId || null
       }
-      file.parentId = newParentId
-      file.updatedAt = Date.now()
-      persist()
     }
+
+    file.parentId = newParentId
+    file.updatedAt = Date.now()
+    persist()
   }
 
   function archiveFile(fileId) {
-    const file = files.value.find(f => f.id === fileId)
-    if (file) {
-      file.isArchived = true
-      file.updatedAt = Date.now()
-      persist()
-    }
+    const file = files.value.find((f) => f.id === fileId)
+    if (!file) return
+    file.isArchived = true
+    file.updatedAt = Date.now()
+    persist()
   }
 
   function unarchiveFile(fileId) {
-    const file = files.value.find(f => f.id === fileId)
-    if (file) {
-      file.isArchived = false
-      file.updatedAt = Date.now()
-      persist()
-    }
+    const file = files.value.find((f) => f.id === fileId)
+    if (!file) return
+    file.isArchived = false
+    file.updatedAt = Date.now()
+    persist()
   }
 
   function duplicateFile(fileId) {
-    const file = files.value.find(f => f.id === fileId)
+    const file = files.value.find((f) => f.id === fileId)
     if (!file || file.type !== 'file') return null
+
+    const lastDot = file.name.lastIndexOf('.')
+    const hasExt = lastDot > -1
+    const baseName = hasExt ? file.name.slice(0, lastDot) : file.name
+    const ext = hasExt ? file.name.slice(lastDot) : '.md'
+    const siblings = files.value.filter((f) => f.parentId === file.parentId && !f.isArchived)
+    let finalName = `${baseName} - 复制${ext}`
+    let counter = 1
+    while (siblings.some((f) => f.name === finalName)) {
+      finalName = `${baseName} - 复制 (${counter})${ext}`
+      counter += 1
+    }
 
     const newFile = {
       ...file,
       id: generateId(),
-      name: file.name.replace(/(\.[^.]*)?$/, ' - 副本$1'),
+      name: finalName,
       createdAt: Date.now(),
       updatedAt: Date.now(),
+      lastOpenedAt: Date.now(),
       order: Date.now()
     }
     files.value.push(newFile)
@@ -282,27 +283,33 @@ export function useFileSystem() {
   }
 
   function updateFileContent(fileId, content) {
-    const file = files.value.find(f => f.id === fileId)
-    if (file && file.type === 'file') {
-      file.content = content
-      file.updatedAt = Date.now()
-      persist()
-    }
+    const file = files.value.find((f) => f.id === fileId)
+    if (!file || file.type !== 'file') return
+    file.content = content
+    file.updatedAt = Date.now()
+    file.lastOpenedAt = Date.now()
+    persist()
+  }
+
+  function touchFile(fileId) {
+    const file = files.value.find((f) => f.id === fileId)
+    if (!file) return
+    file.lastOpenedAt = Date.now()
+    persist()
   }
 
   function setCurrentFile(fileId) {
-    const file = files.value.find(f => f.id === fileId)
-    if (file && file.type === 'file') {
-      currentFileId.value = fileId
-      persist()
-    }
+    const file = files.value.find((f) => f.id === fileId)
+    if (!file || file.type !== 'file') return
+    currentFileId.value = fileId
+    touchFile(fileId)
+    persist()
   }
 
   function exportFile(fileId) {
-    const file = files.value.find(f => f.id === fileId)
+    const file = files.value.find((f) => f.id === fileId)
     if (!file || file.type !== 'file') return
-
-    const blob = new Blob([file.content], { type: 'text/markdown' })
+    const blob = new Blob([file.content || ''], { type: 'text/markdown' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -313,61 +320,57 @@ export function useFileSystem() {
 
   function getFilePath(fileId) {
     const path = []
-    let current = files.value.find(f => f.id === fileId)
+    let current = files.value.find((f) => f.id === fileId)
     while (current) {
       path.unshift(current.name)
-      current = files.value.find(f => f.id === current.parentId)
+      current = files.value.find((f) => f.id === current.parentId)
     }
     return path.join(' / ')
   }
 
   function getParentFolderIds(fileId) {
-    const ids = []
-    let current = files.value.find(f => f.id === fileId)
-    while (current && current.parentId) {
-      ids.unshift(current.parentId)
-      current = files.value.find(f => f.id === current.parentId)
+    const result = []
+    let current = files.value.find((f) => f.id === fileId)
+    while (current?.parentId) {
+      result.unshift(current.parentId)
+      current = files.value.find((f) => f.id === current.parentId)
     }
-    return ids
+    return result
   }
 
   function addFileTag(fileId, tagId) {
-    const file = files.value.find(f => f.id === fileId)
-    if (file) {
-      if (!file.tags) file.tags = []
-      if (!file.tags.includes(tagId)) {
-        file.tags.push(tagId)
-        persist()
-        return true
-      }
+    const file = files.value.find((f) => f.id === fileId)
+    if (!file) return false
+    if (!file.tags) file.tags = []
+    if (!file.tags.includes(tagId)) {
+      file.tags.push(tagId)
+      persist()
+      return true
     }
     return false
   }
 
   function removeFileTag(fileId, tagId) {
-    const file = files.value.find(f => f.id === fileId)
-    if (file && file.tags) {
-      const index = file.tags.indexOf(tagId)
-      if (index !== -1) {
-        file.tags.splice(index, 1)
-        persist()
-        return true
-      }
-    }
-    return false
+    const file = files.value.find((f) => f.id === fileId)
+    if (!file || !file.tags) return false
+    const index = file.tags.indexOf(tagId)
+    if (index === -1) return false
+    file.tags.splice(index, 1)
+    persist()
+    return true
   }
 
   function getFileTags(fileId) {
-    const file = files.value.find(f => f.id === fileId)
+    const file = files.value.find((f) => f.id === fileId)
     return file?.tags || []
   }
 
   function updateFileTags(fileId, tagIds) {
-    const file = files.value.find(f => f.id === fileId)
-    if (file) {
-      file.tags = tagIds
-      persist()
-    }
+    const file = files.value.find((f) => f.id === fileId)
+    if (!file) return
+    file.tags = tagIds
+    file.updatedAt = Date.now()
+    persist()
   }
 
   function setSortMode(mode) {
@@ -380,7 +383,6 @@ export function useFileSystem() {
     switch (sortMode.value) {
       case 'name':
         return sorted.sort((a, b) => {
-          // 文件夹优先
           if (a.type === 'folder' && b.type !== 'folder') return -1
           if (a.type !== 'folder' && b.type === 'folder') return 1
           return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
@@ -398,14 +400,25 @@ export function useFileSystem() {
     }
   }
 
+  function toggleFavorite(fileId) {
+    const file = files.value.find((f) => f.id === fileId)
+    if (!file) return false
+    file.isFavorite = !file.isFavorite
+    file.updatedAt = Date.now()
+    persist()
+    return file.isFavorite
+  }
+
   return {
     files,
     currentFileId,
     currentFile,
     rootFiles,
     archivedFiles,
-    getChildren,
+    favoriteFiles,
+    recentFiles,
     sortMode,
+    getChildren,
     getSortedFiles,
     createFile,
     createFolder,
@@ -424,6 +437,8 @@ export function useFileSystem() {
     addFileTag,
     removeFileTag,
     getFileTags,
-    updateFileTags
+    updateFileTags,
+    touchFile,
+    toggleFavorite
   }
 }

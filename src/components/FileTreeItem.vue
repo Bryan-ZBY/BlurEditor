@@ -46,6 +46,19 @@
       </template>
       <span v-else class="ft-name">{{ file.name }}</span>
       <span v-if="children.length > 0" class="ft-count">{{ children.length }}</span>
+      <button
+        class="ft-star-btn"
+        :class="{ active: isFavorited }"
+        :title="isFavorited ? '取消收藏' : '收藏'"
+        @click.stop="toggleFavorite"
+      >
+        <svg v-if="isFavorited" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 17.27 18.18 21 16.55 14.03 22 9.24 14.91 8.62 12 2 9.09 8.62 2 9.24 7.45 14.03 5.82 21z" />
+        </svg>
+        <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 17.27 18.18 21 16.55 14.03 22 9.24 14.91 8.62 12 2 9.09 8.62 2 9.24 7.45 14.03 5.82 21z" />
+        </svg>
+      </button>
     </div>
 
     <div
@@ -77,6 +90,19 @@
         />
       </template>
       <span v-else class="ft-name">{{ file.name }}</span>
+      <button
+        class="ft-star-btn"
+        :class="{ active: isFavorited }"
+        :title="isFavorited ? '取消收藏' : '收藏'"
+        @click.stop="toggleFavorite"
+      >
+        <svg v-if="isFavorited" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 17.27 18.18 21 16.55 14.03 22 9.24 14.91 8.62 12 2 9.09 8.62 2 9.24 7.45 14.03 5.82 21z" />
+        </svg>
+        <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 17.27 18.18 21 16.55 14.03 22 9.24 14.91 8.62 12 2 9.09 8.62 2 9.24 7.45 14.03 5.82 21z" />
+        </svg>
+      </button>
       <span class="ft-size">{{ formatSize(file.content?.length || 0) }}</span>
       <span class="ft-date">{{ formatDate(file.updatedAt) }}</span>
     </div>
@@ -99,6 +125,7 @@
           @create-folder="$emit('create-folder', $event)"
           @move="$emit('move', $event)"
           @rename="$emit('rename', $event)"
+          @toggleFavorite="$emit('toggleFavorite', $event)"
         />
         <div
           v-if="children.length === 0"
@@ -310,11 +337,12 @@ const props = defineProps({
 })
 
 const emit = defineEmits([
-  'select', 'toggle', 'create-file', 'create-folder', 'move', 'rename'
+  'select', 'toggle', 'create-file', 'create-folder', 'move', 'rename', 'toggleFavorite'
 ])
 
 const isCurrent = computed(() => props.file.id === props.currentFileId)
 const isExpanded = computed(() => props.expandedIds.has(props.file.id))
+const isFavorited = computed(() => Boolean(props.file?.isFavorite))
 const children = computed(() => {
   const rawChildren = props.getChildren(props.file.id)
   if (props.getSortedFiles) {
@@ -417,6 +445,10 @@ function handleAction(action) {
       emit('create-folder', file.id)
       break
   }
+}
+
+function toggleFavorite() {
+  emit('toggleFavorite', { fileId: props.file.id })
 }
 
 function handleDeleteConfirm() {
@@ -638,6 +670,34 @@ function formatDate(timestamp) {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 500;
+}
+
+.ft-star-btn {
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 9999px;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  opacity: 0.85;
+}
+
+.ft-star-btn svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.ft-star-btn:hover {
+  color: #f59e0b;
+}
+
+.ft-star-btn.active {
+  color: #f59e0b;
 }
 
 .ft-count {

@@ -13,6 +13,7 @@
         ref="fileManagerRef"
         :root-files="rootFiles"
         :archived-files="archivedFiles"
+        :files="fileSystem.files.value"
         :current-file-id="currentFileId"
         :get-children="getChildren"
         :is-dark="isDark"
@@ -29,6 +30,7 @@
         @export-file="handleExportFile"
         @move-file="handleMoveFile"
         @set-sort-mode="handleSetSortMode"
+        @toggleFavorite="handleToggleFavorite"
         @open-import="showImportModal = true"
       />
     </div>
@@ -115,6 +117,24 @@
       />
     </Transition>
 
+    <!-- 命令面板 -->
+    <CommandPalette
+      v-if="showCommandPalette"
+      :visible="showCommandPalette"
+      :is-dark="isDark"
+      :commands="commandPaletteCommands"
+      @close="showCommandPalette = false"
+      @execute="handleCommandExecute"
+    />
+
+    <!-- 新手引导 -->
+    <OnboardingTour
+      v-if="showOnboarding"
+      :is-dark="isDark"
+      @complete="handleOnboardingComplete"
+      @close="showOnboarding = false"
+    />
+
     <!-- 保存提示 -->
     <Transition name="fade-slide">
       <div v-if="showSaveNotification" class="save-notification">
@@ -133,18 +153,22 @@ import Editor from './components/Editor.vue'
 import FileManager from './components/FileManager.vue'
 import ImportModal from './components/ImportModal.vue'
 import GlobalSearch from './components/GlobalSearch.vue'
+import CommandPalette from './components/CommandPalette.vue'
+import OnboardingTour from './components/OnboardingTour.vue'
 import { useFileSystem } from './composables/useFileSystem.js'
 import { useTheme } from './composables/useTheme.js'
 import { useTabs } from './composables/useTabs.js'
 import { useKeyboardShortcuts } from './composables/useKeyboardShortcuts.js'
 
-const { theme, isDark, toggleTheme } = useTheme()
+const { theme, isDark, toggleTheme, setTheme } = useTheme()
 const fileSystem = useFileSystem()
 const { closeTab, validateTabs } = useTabs()
 
 const showImportModal = ref(false)
 const showGlobalSearch = ref(false)
 const showSaveNotification = ref(false)
+const showCommandPalette = ref(false)
+const showOnboarding = ref(false)
 
 const editorComponent = ref(null)
 const fileManagerRef = ref(null)
@@ -159,6 +183,15 @@ const isZenModeActive = computed(
 )
 const splitPosition = ref(50)
 const isResizing = ref(false)
+const ONBOARDING_KEY = 'blur_editor_onboarding_seen'
+const THEME_OPTIONS = [
+  { id: 'dark', title: '暗色（默认）' },
+  { id: 'light', title: '亮色' },
+  { id: 'midnight', title: '午夜' },
+  { id: 'forest', title: '森林' },
+  { id: 'sunset', title: '晚霞' },
+  { id: 'lavender', title: '薰衣草' }
+]
 
 const fileManagerWidth = ref(parseInt(localStorage.getItem('fileManagerWidth')) || 256)
 const isFileManagerResizing = ref(false)
@@ -259,6 +292,18 @@ function handleMoveFile({ fileId, newParentId }) {
   fileSystem.moveFile(fileId, newParentId)
 }
 
+function handleToggleFavorite({ fileId }) {
+  fileSystem.toggleFavorite(fileId)
+}
+
+function handleCreateFolderAtRoot() {
+  fileSystem.createFolder(null)
+}
+
+function handleOpenOnboarding() {
+  showOnboarding.value = true
+}
+
 function handleSetSortMode(mode) {
   fileSystem.setSortMode(mode)
 }
@@ -293,6 +338,75 @@ function handleImport(files) {
   if (firstNewFile) {
     fileSystem.setCurrentFile(firstNewFile.id)
   }
+}
+
+const commandPaletteCommands = computed(() => [
+  { id: 'command:newFile', title: '新建文件', hint: '创建 Markdown 文件', group: '文件', tags: ['new', 'file'] },
+  { id: 'command:newFolder', title: '新建文件夹', hint: '创建文件夹', group: '文件', tags: ['new', 'folder'] },
+  { id: 'command:import', title: '导入文件', hint: '从本地导入 Markdown', group: '文件', tags: ['import', 'file'] },
+  { id: 'command:duplicate', title: '复制当前文件', hint: '复制当前文件到同目录', group: '文件', tags: ['copy', 'file'] },
+  { id: 'command:globalSearch', title: '全局搜索', hint: '在所有文件内查找', group: '检索', tags: ['search'] },
+  { id: 'command:togglePreview', title: '切换编辑/预览', hint: '切换模式', group: '视图', tags: ['preview'] },
+  { id: 'command:toggleSplit', title: '切换分栏', hint: '切换左右分栏', group: '视图', tags: ['split'] },
+  { id: 'command:toggleZen', title: '禅模式', hint: '沉浸式预览（Alt+Z）', group: '视图', tags: ['zen'] },
+  { id: 'command:toggleOutline', title: '切换文档大纲', hint: '显示/隐藏大纲', group: '视图', tags: ['outline'] },
+  { id: 'command:openCommandPalette', title: '打开命令面板', hint: '再次打开命令面板', group: '系统', tags: ['command'] },
+  { id: 'command:showOnboarding', title: '重看新手引导', hint: '打开新手引导', group: '帮助', tags: ['help', 'onboarding'] },
+  ...THEME_OPTIONS.map((item) => ({
+    id: `theme:${item.id}`,
+    title: `切换主题：${item.title}`,
+    hint: '主题切换（Alt+L）',
+    group: '主题',
+    tags: ['theme', item.id],
+    theme: item.id
+  }))
+])
+
+const handleOpenCommandPalette = () => {
+  showCommandPalette.value = true
+}
+
+const handleCloseCommandPalette = () => {
+  showCommandPalette.value = false
+}
+
+function handleCommandExecute(command) {
+  const id = command?.id || ''
+  if (!id) return
+
+  if (id === 'command:newFile') {
+    handleCreateFile(null)
+  } else if (id === 'command:newFolder') {
+    handleCreateFolderAtRoot()
+  } else if (id === 'command:import') {
+    showImportModal.value = true
+  } else if (id === 'command:duplicate' && currentFile.value) {
+    handleDuplicateFile(currentFile.value.id)
+  } else if (id === 'command:globalSearch') {
+    showGlobalSearch.value = true
+  } else if (id === 'command:togglePreview') {
+    togglePreviewMode()
+  } else if (id === 'command:toggleSplit') {
+    toggleFullscreenPreview()
+  } else if (id === 'command:toggleZen') {
+    handleToggleZenMode()
+  } else if (id === 'command:toggleOutline') {
+    handleToggleOutline()
+  } else if (id === 'command:openCommandPalette') {
+    showCommandPalette.value = true
+  } else if (id === 'command:showOnboarding') {
+    handleOpenOnboarding()
+  } else if (id.startsWith('theme:')) {
+    const nextTheme = id.replace('theme:', '')
+    setTheme(nextTheme)
+  }
+
+  handleCloseCommandPalette()
+}
+
+function handleOnboardingComplete() {
+  showOnboarding.value = false
+  localStorage.setItem(ONBOARDING_KEY, '1')
 }
 
 const togglePreviewMode = () => {
@@ -376,7 +490,16 @@ useKeyboardShortcuts({
   onToggleZenMode: handleToggleZenMode,
   onToggleOutline: handleToggleOutline,
   onToggleTheme: toggleTheme,
+  onOpenCommandPalette: handleOpenCommandPalette,
   onEscape: () => {
+    if (showCommandPalette.value) {
+      showCommandPalette.value = false
+      return
+    }
+    if (showOnboarding.value) {
+      showOnboarding.value = false
+      return
+    }
     if (isZenMode.value) {
       isZenMode.value = false
     }
@@ -399,6 +522,10 @@ onMounted(() => {
 
   const validFileIds = fileSystem.files.value.filter(f => f.type === 'file').map(f => f.id)
   validateTabs(validFileIds)
+
+  if (!localStorage.getItem(ONBOARDING_KEY)) {
+    showOnboarding.value = true
+  }
 })
 </script>
 

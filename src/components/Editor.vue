@@ -114,6 +114,34 @@
               </svg>
             </button>
             <button
+              @click="showPreviewSettings = !showPreviewSettings"
+              class="icon-btn preview-settings-btn"
+              title="阅读设置"
+            >
+              <span class="zen-btn-icon">Aa</span>
+            </button>
+            <div v-if="showPreviewSettings" class="preview-settings">
+              <div class="setting-group">
+                <label>字体</label>
+                <button @click="setFontFamily('system')" :class="{ active: previewFont === 'system' }">默认</button>
+                <button @click="setFontFamily('serif')" :class="{ active: previewFont === 'serif' }">衬线</button>
+                <button @click="setFontFamily('mono')" :class="{ active: previewFont === 'mono' }">等宽</button>
+              </div>
+              <div class="setting-group">
+                <label>字号</label>
+                <button @click="setFontSize('14')" :class="{ active: previewFontSize === '14' }">14</button>
+                <button @click="setFontSize('15')" :class="{ active: previewFontSize === '15' }">15</button>
+                <button @click="setFontSize('16')" :class="{ active: previewFontSize === '16' }">16</button>
+                <button @click="setFontSize('17')" :class="{ active: previewFontSize === '17' }">17</button>
+              </div>
+              <div class="setting-group">
+                <label>行高</label>
+                <button @click="setLineHeight('1.55')" :class="{ active: previewLineHeight === '1.55' }">1.55</button>
+                <button @click="setLineHeight('1.75')" :class="{ active: previewLineHeight === '1.75' }">1.75</button>
+                <button @click="setLineHeight('1.95')" :class="{ active: previewLineHeight === '1.95' }">1.95</button>
+              </div>
+            </div>
+            <button
               v-if="isPreviewMode"
               @click="toggleZenMode"
               class="icon-btn"
@@ -195,7 +223,8 @@
                   ref="previewRef"
                   class="preview-content custom-scrollbar"
                   v-html="previewContent"
-                  @scroll="syncEditorScroll"
+                  :style="previewTypographyStyle"
+                  @scroll="handlePreviewScroll"
                 ></div>
               </div>
             </div>
@@ -208,6 +237,7 @@
         v-if="showOutline"
         :content="content"
         :isDark="isDark"
+        :active-heading-id="activeHeadingId"
         @scrollToHeading="handleScrollToHeading"
       />
     </div>
@@ -219,6 +249,7 @@ import { ref, computed, onMounted, watch, nextTick, getCurrentInstance } from 'v
 import { marked } from 'marked'
 import hljs from 'highlight.js'
 import mermaid from 'mermaid'
+import { useOutlineParser } from '../composables/useOutlineParser.js'
 
 import EditorTabs from './EditorTabs.vue'
 import DocumentOutline from './DocumentOutline.vue'
@@ -259,8 +290,23 @@ const isSyncing = ref(false)
 const showOutline = ref(false)
 const showExportMenu = ref(false)
 const showTabs = ref(true)
+const showPreviewSettings = ref(false)
+const previewFont = ref('system')
+const previewFontSize = ref('16')
+const previewLineHeight = ref('1.8')
 
 const { tabs, activeTabId, openTab, closeTab, closeOtherTabs, closeLeftTabs, closeRightTabs, closeAllTabs, setActiveTab, setTabDirty, isTabDirty, updateTabName, moveTab, togglePinTab } = useTabs()
+const parserSource = computed(() => props.content || '')
+const { getHeadings } = useOutlineParser(parserSource)
+const outlineHeadings = computed(() => getHeadings())
+
+const activeHeadingId = ref('')
+
+const FONT_FAMILY_OPTIONS = {
+  system: "'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif",
+  serif: "Georgia, 'Times New Roman', 'Nimbus Roman No9 L', serif",
+  mono: "'SF Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace"
+}
 
 const instance = getCurrentInstance()
 const getPreviewEl = () => instance?.refs?.previewRef
@@ -357,6 +403,82 @@ const previewAreaStyle = computed(() => {
   }
 })
 
+const previewTypographyStyle = computed(() => ({
+  fontFamily: FONT_FAMILY_OPTIONS[previewFont.value] || FONT_FAMILY_OPTIONS.system,
+  fontSize: `${previewFontSize.value}px`,
+  lineHeight: String(previewLineHeight.value)
+}))
+
+function slugifyForDom(text) {
+  return text
+    .trim()
+    .toLowerCase()
+    .replace(/[\u4e00-\u9fa5]/g, (m) => m)
+    .replace(/<[^>]+>/g, '')
+    .replace(/[`*_~[\](){}#+.!]/g, '')
+    .replace(/[^a-z0-9\u4e00-\u9fa5\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'heading'
+}
+
+function syncHeadingAnchors() {
+  const container = previewRef.value
+  if (!container) return
+
+  const domHeadings = container.querySelectorAll('h1, h2, h3, h4, h5, h6')
+  const parsed = outlineHeadings.value
+  const used = new Set()
+
+  domHeadings.forEach((node, index) => {
+    const parsedItem = parsed[index]
+    let id = parsedItem?.id || slugifyForDom(node.textContent || '')
+    let uniqueId = id
+    let cursor = 1
+    while (used.has(uniqueId)) {
+      uniqueId = `${id}-${cursor}`
+      cursor += 1
+    }
+    used.add(uniqueId)
+    node.setAttribute('id', uniqueId)
+    node.dataset.outlineId = uniqueId
+  })
+}
+
+function updateActiveHeadingFromScroll() {
+  const container = previewRef.value
+  if (!container) return
+  const nodes = container.querySelectorAll('[data-outline-id]')
+  if (!nodes.length) return
+
+  const target = container.scrollTop + container.clientHeight * 0.25
+  let current = ''
+  nodes.forEach((node) => {
+    if (node.offsetTop <= target) {
+      current = node.dataset.outlineId || ''
+    }
+  })
+  if (current) {
+    activeHeadingId.value = current
+  }
+}
+
+function setPreviewSettings(panelState) {
+  showPreviewSettings.value = panelState
+}
+
+function setFontFamily(font) {
+  previewFont.value = font
+}
+
+function setFontSize(size) {
+  previewFontSize.value = size
+}
+
+function setLineHeight(height) {
+  previewLineHeight.value = height
+}
+
 const handleInput = (e) => {
   emit('update:content', e.target.value)
   if (props.currentFile?.id) {
@@ -377,6 +499,7 @@ const syncPreviewScroll = (e) => {
   preview.scrollTop = scrollRatio * previewMaxScrollTop
 
   requestAnimationFrame(() => {
+    updateActiveHeadingFromScroll()
     isSyncing.value = false
   })
 }
@@ -394,8 +517,30 @@ const syncEditorScroll = (e) => {
   editor.scrollTop = scrollRatio * editorMaxScrollTop
 
   requestAnimationFrame(() => {
+    updateActiveHeadingFromScroll()
     isSyncing.value = false
   })
+}
+
+function handlePreviewScroll(e) {
+  const preview = e.target
+  if (props.isFullscreenPreview === false) {
+    syncEditorScroll(e)
+  }
+  updateActiveHeadingFromScroll()
+  if (preview) {
+    const headings = preview.querySelectorAll('[data-outline-id]')
+    const target = preview.scrollTop + preview.clientHeight * 0.25
+    let found = ''
+    headings.forEach((node) => {
+      if (node.offsetTop <= target) {
+        found = node.dataset.outlineId || ''
+      }
+    })
+    if (found) {
+      activeHeadingId.value = found
+    }
+  }
 }
 
 const togglePreviewMode = () => {
@@ -512,8 +657,13 @@ function handleScrollToHeading({ heading }) {
 
   const headings = preview.querySelectorAll('h1, h2, h3, h4, h5, h6')
   for (const h of headings) {
-    if (h.textContent.trim() === heading.text) {
+    if (h.dataset.outlineId === heading.id || h.textContent.trim() === heading.text) {
+      isSyncing.value = true
       h.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      activeHeadingId.value = heading.id
+      requestAnimationFrame(() => {
+        isSyncing.value = false
+      })
       break
     }
   }
@@ -553,6 +703,19 @@ watch(() => props.currentFile?.name, (newName) => {
   }
 })
 
+watch(
+  () => [props.content, props.isPreviewMode],
+  () => {
+    nextTick(() => {
+      if (props.isPreviewMode) {
+        syncHeadingAnchors()
+        updateActiveHeadingFromScroll()
+      }
+    })
+  },
+  { deep: true, immediate: true }
+)
+
 onMounted(() => {
   initMermaid(props.isDark)
   loadHljsTheme(props.isDark)
@@ -577,6 +740,21 @@ onMounted(() => {
     if (showExportMenu.value && !e.target.closest('.export-wrapper')) {
       showExportMenu.value = false
     }
+  })
+
+  document.addEventListener('click', (e) => {
+    if (
+      showPreviewSettings.value &&
+      !e.target.closest('.preview-settings') &&
+      !e.target.closest('.preview-settings-btn')
+    ) {
+      showPreviewSettings.value = false
+    }
+  })
+
+  nextTick(() => {
+    syncHeadingAnchors()
+    updateActiveHeadingFromScroll()
   })
 })
 
@@ -731,6 +909,10 @@ defineExpose({ editorRef, splitEditorRef, toggleOutline })
   height: 1.1rem;
   position: relative;
   z-index: 1;
+}
+
+.preview-settings-btn {
+  position: relative;
 }
 
 .zen-btn-icon {
@@ -1063,6 +1245,59 @@ defineExpose({ editorRef, splitEditorRef, toggleOutline })
   flex: 1;
   overflow-y: auto;
   padding: 1.5rem 2rem;
+}
+
+.preview-settings {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 0.5rem;
+  min-width: 15rem;
+  padding: 0.5rem;
+  border-radius: 0.75rem;
+  background: var(--menu-bg, #fff);
+  border: 1px solid var(--menu-border, #e5e7eb);
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.preview-settings .setting-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.preview-settings .setting-group label {
+  width: 100%;
+  font-size: 0.75rem;
+  color: var(--text-muted, #64748b);
+}
+
+.preview-settings .setting-group button {
+  border: 1px solid var(--menu-border, #e5e7eb);
+  border-radius: 0.45rem;
+  background: transparent;
+  color: var(--text-primary, #111827);
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.preview-settings .setting-group button:hover {
+  background: var(--menu-hover, rgba(0, 0, 0, 0.04));
+}
+
+.preview-settings .setting-group button.active {
+  background: var(--icon-btn-active, rgba(99, 102, 241, 0.14));
+  color: var(--accent-indigo, #6366f1);
+  border-color: var(--accent-indigo, #6366f1);
 }
 
 .editor-container.zen-mode .preview-content {

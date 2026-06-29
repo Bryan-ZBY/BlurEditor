@@ -2,22 +2,47 @@
   <div class="doc-outline" :class="{ 'is-dark': isDark, collapsed: isCollapsed }">
     <div class="outline-header" @click="toggleCollapse">
       <div class="header-left">
-        <svg class="collapse-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+        <svg
+          class="collapse-icon"
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
         </svg>
         <span class="outline-title">文档大纲</span>
       </div>
       <div class="header-right">
-        <span v-if="headings.length" class="outline-count">{{ headings.length }}</span>
+        <span v-if="filteredHeadings.length" class="outline-count">{{ filteredHeadings.length }}</span>
       </div>
     </div>
     <Transition name="expand">
       <div v-show="!isCollapsed" class="outline-body custom-scrollbar">
+        <div class="outline-search">
+          <input
+            v-model.trim="searchKeyword"
+            type="text"
+            class="outline-search-input"
+            placeholder="搜索标题..."
+            @click.stop
+          />
+          <button v-if="searchKeyword" class="outline-search-clear" @click.stop="searchKeyword = ''">
+            ×
+          </button>
+        </div>
         <Transition name="fade" mode="out-in">
-          <div v-if="headings.length === 0" key="empty" class="outline-empty">
+          <div v-if="filteredHeadings.length === 0" key="empty" class="outline-empty">
             <div class="empty-icon-wrapper">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h7"/>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h7" />
               </svg>
               <div class="empty-glow"></div>
             </div>
@@ -25,12 +50,12 @@
           </div>
           <ul v-else key="list" class="outline-list">
             <li
-              v-for="(heading, index) in headings"
-              :key="index"
+              v-for="(heading, index) in filteredHeadings"
+              :key="heading.id"
               class="outline-item"
-              :class="[`level-${heading.level}`, { active: activeIndex === index }]"
+              :class="[`level-${heading.level}`, { active: heading.id === propsActiveId }]"
               :style="{ animationDelay: index * 30 + 'ms' }"
-              @click="scrollToHeading(index)"
+              @click="scrollToHeading(heading)"
             >
               <div class="item-gutter">
                 <span class="outline-dot"></span>
@@ -46,47 +71,51 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { computed, ref } from 'vue'
+import { useOutlineParser } from '../composables/useOutlineParser.js'
 
 const props = defineProps({
-  content: { type: String, default: '' },
-  isDark: { type: Boolean, default: false }
+  content: {
+    type: String,
+    default: ''
+  },
+  isDark: {
+    type: Boolean,
+    default: false
+  },
+  activeHeadingId: {
+    type: String,
+    default: ''
+  }
 })
 
 const emit = defineEmits(['scrollToHeading'])
 
 const isCollapsed = ref(false)
-const activeIndex = ref(-1)
+const searchKeyword = ref('')
 
-const headings = computed(() => {
-  const lines = props.content.split('\n')
-  const result = []
+const parserSource = computed(() => props.content || '')
+const { getHeadings } = useOutlineParser(parserSource)
+const headings = computed(() => getHeadings())
 
-  for (const line of lines) {
-    if (line.trim().startsWith('```')) continue
-    const match = line.match(/^(#{1,6})\s+(.+)/)
-    if (match) {
-      result.push({
-        level: match[1].length,
-        text: match[2].trim()
-      })
-    }
-  }
-  return result
+const normalizedSearchKeyword = computed(() => searchKeyword.value.trim().toLowerCase())
+const filteredHeadings = computed(() => {
+  const query = normalizedSearchKeyword.value
+  if (!query) return headings.value
+  return headings.value.filter((heading) =>
+    heading.text.toLowerCase().includes(query)
+  )
 })
+
+const propsActiveId = computed(() => props.activeHeadingId || '')
 
 function toggleCollapse() {
   isCollapsed.value = !isCollapsed.value
 }
 
-function scrollToHeading(index) {
-  activeIndex.value = index
-  emit('scrollToHeading', { index, heading: headings.value[index] })
+function scrollToHeading(heading) {
+  emit('scrollToHeading', { heading })
 }
-
-watch(() => props.content, () => {
-  activeIndex.value = -1
-})
 </script>
 
 <style scoped>
@@ -100,6 +129,17 @@ watch(() => props.content, () => {
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
   position: relative;
+}
+
+.doc-outline.is-dark {
+  --outline-bg: #0f172a;
+  --outline-border: #334155;
+  --outline-text: #94a3b8;
+  --outline-text-hover: #e2e8f0;
+  --outline-active: #3b82f6;
+  --outline-item-hover: rgba(59, 130, 246, 0.08);
+  --outline-item-active: rgba(59, 130, 246, 0.12);
+  --outline-glow: rgba(59, 130, 246, 0.15);
 }
 
 .doc-outline::before {
@@ -122,18 +162,6 @@ watch(() => props.content, () => {
   width: 36px;
 }
 
-.doc-outline.is-dark {
-  --outline-bg: #0f172a;
-  --outline-border: #334155;
-  --outline-text: #94a3b8;
-  --outline-text-hover: #e2e8f0;
-  --outline-active: #3b82f6;
-  --outline-item-hover: rgba(59, 130, 246, 0.08);
-  --outline-item-active: rgba(59, 130, 246, 0.12);
-  --outline-glow: rgba(59, 130, 246, 0.15);
-}
-
-/* 头部 */
 .outline-header {
   display: flex;
   align-items: center;
@@ -153,6 +181,42 @@ watch(() => props.content, () => {
 .outline-header:hover {
   background: var(--outline-item-hover, #f1f5f9);
   color: var(--outline-text-hover, #1e293b);
+}
+
+.outline-search {
+  position: relative;
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--outline-border, #e2e8f0);
+}
+
+.outline-search-input {
+  width: 100%;
+  border-radius: 0.5rem;
+  border: 1px solid var(--outline-border, #e2e8f0);
+  background: var(--editor-bg, #fff);
+  color: var(--text-primary, #0f172a);
+  padding: 0.35rem 2rem 0.35rem 0.6rem;
+  font-size: 0.75rem;
+  outline: none;
+}
+
+.outline-search-input:focus {
+  border-color: var(--outline-active, #6366f1);
+  box-shadow: 0 0 0 2px var(--outline-glow, rgba(99, 102, 241, 0.2));
+}
+
+.outline-search-clear {
+  position: absolute;
+  right: 0.8rem;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  color: var(--outline-text, #94a3b8);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
 }
 
 .header-left {
@@ -194,21 +258,14 @@ watch(() => props.content, () => {
   min-width: 1.5rem;
   text-align: center;
   box-shadow: 0 2px 8px var(--accent-glow, rgba(99, 102, 241, 0.2));
-  transition: all 0.2s ease;
 }
 
-.outline-header:hover .outline-count {
-  transform: scale(1.1);
-}
-
-/* 主体 */
 .outline-body {
   flex: 1;
   overflow-y: auto;
   padding: 0.5rem 0;
 }
 
-/* 展开/折叠动画 */
 .expand-enter-active,
 .expand-leave-active {
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
@@ -221,13 +278,6 @@ watch(() => props.content, () => {
   max-height: 0;
 }
 
-.expand-enter-to,
-.expand-leave-from {
-  opacity: 1;
-  max-height: 600px;
-}
-
-/* 空状态 */
 .outline-empty {
   display: flex;
   flex-direction: column;
@@ -263,14 +313,12 @@ watch(() => props.content, () => {
   pointer-events: none;
 }
 
-/* 列表 */
 .outline-list {
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-/* 大纲项 */
 .outline-item {
   display: flex;
   align-items: center;
@@ -300,7 +348,6 @@ watch(() => props.content, () => {
   border-left-color: var(--outline-active, #6366f1);
 }
 
-/* 缩进层级 */
 .outline-item.level-1 {
   padding-left: 0.75rem;
   font-weight: 600;
@@ -330,7 +377,6 @@ watch(() => props.content, () => {
   font-size: 0.75rem;
 }
 
-/* 左侧装饰 */
 .item-gutter {
   display: flex;
   align-items: center;
@@ -365,7 +411,6 @@ watch(() => props.content, () => {
   box-shadow: 0 0 8px var(--accent-glow, rgba(99, 102, 241, 0.4));
 }
 
-/* 缩进连接线 */
 .indent-line {
   position: absolute;
   left: 50%;
@@ -382,7 +427,6 @@ watch(() => props.content, () => {
   height: 100%;
 }
 
-/* 文本 */
 .outline-text {
   flex: 1;
   overflow: hidden;
@@ -390,7 +434,6 @@ watch(() => props.content, () => {
   white-space: nowrap;
 }
 
-/* 过渡动画 */
 .fade-enter-active,
 .fade-leave-active {
   transition: all 0.2s ease;
@@ -413,7 +456,8 @@ watch(() => props.content, () => {
 }
 
 @keyframes float {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0);
   }
   50% {
@@ -422,7 +466,8 @@ watch(() => props.content, () => {
 }
 
 @keyframes pulseGlow {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 0.4;
     transform: scale(1);
   }
