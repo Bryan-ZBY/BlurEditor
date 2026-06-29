@@ -1,8 +1,8 @@
 <template>
-  <div class="editor-container" :class="{ 'is-dark': isDark }">
+  <div class="editor-container" :class="{ 'is-dark': isDark, 'zen-mode': isZenMode && isPreviewMode && isFullscreenPreview }">
     <!-- 标签页 -->
     <EditorTabs
-      v-if="showTabs"
+      v-if="showTabs && !isZenMode"
       :tabs="tabs"
       :activeTabId="activeTabId"
       :isDark="isDark"
@@ -23,7 +23,7 @@
       <!-- 编辑器区域 -->
       <div class="editor-area">
         <!-- 顶部工具栏 -->
-        <div class="top-bar">
+        <div v-if="!isZenMode" class="top-bar">
           <div class="top-bar-left">
             <span v-if="currentFile" class="filename">
               {{ currentFile.name }}
@@ -112,6 +112,15 @@
                 <rect x="14" y="3" width="7" height="18" rx="1"/>
                 <line x1="12" y1="3" x2="12" y2="21"/>
               </svg>
+            </button>
+            <button
+              v-if="isPreviewMode"
+              @click="toggleZenMode"
+              class="icon-btn"
+              :class="{ active: isZenMode }"
+              title="Zen mode"
+            >
+              <span class="zen-btn-icon">Z</span>
             </button>
             <!-- 预览切换 -->
             <button
@@ -222,6 +231,7 @@ const props = defineProps({
   currentFile: Object,
   isPreviewMode: Boolean,
   isFullscreenPreview: Boolean,
+  isZenMode: Boolean,
   splitPosition: Number,
   isResizing: Boolean,
   isDark: Boolean,
@@ -233,6 +243,7 @@ const emit = defineEmits([
   'togglePreviewMode',
   'toggleFullscreenPreview',
   'exitPreviewMode',
+  'toggleZenMode',
   'startResize',
   'toggleTheme',
   'tabChange',
@@ -397,6 +408,10 @@ const togglePreviewMode = () => {
 }
 const toggleFullscreenPreview = () => emit('toggleFullscreenPreview')
 const exitPreviewMode = () => emit('exitPreviewMode')
+const toggleZenMode = () => emit('toggleZenMode')
+const toggleOutline = () => {
+  showOutline.value = !showOutline.value
+}
 const startResize = (e) => emit('startResize', e)
 
 const toggleSplitMode = () => {
@@ -570,7 +585,7 @@ watch(() => props.isDark, (newVal) => {
   loadHljsTheme(newVal)
 })
 
-defineExpose({ editorRef, splitEditorRef })
+defineExpose({ editorRef, splitEditorRef, toggleOutline })
 </script>
 
 <style scoped>
@@ -714,6 +729,15 @@ defineExpose({ editorRef, splitEditorRef })
 .icon-btn svg {
   width: 1.1rem;
   height: 1.1rem;
+  position: relative;
+  z-index: 1;
+}
+
+.zen-btn-icon {
+  font-family: 'SF Mono', 'Fira Code', Consolas, monospace;
+  font-weight: 700;
+  font-size: 0.9rem;
+  line-height: 1;
   position: relative;
   z-index: 1;
 }
@@ -1039,6 +1063,13 @@ defineExpose({ editorRef, splitEditorRef })
   flex: 1;
   overflow-y: auto;
   padding: 1.5rem 2rem;
+}
+
+.editor-container.zen-mode .preview-content {
+  max-width: 60%;
+  margin: 0 auto;
+  padding: 1.5rem 1rem;
+  width: 60%;
 }
 
 /* 代码块头部动画 - 始终显示 */

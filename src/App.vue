@@ -1,7 +1,14 @@
 <template>
-  <div class="flex w-screen h-screen overflow-hidden app-root" :class="themeClass">
+  <div
+    class="flex w-screen h-screen overflow-hidden app-root"
+    :class="[themeClass, { 'zen-mode': isZenModeActive }]"
+  >
     <!-- 文件管理器 -->
-    <div class="relative file-manager-wrapper" :style="{ width: fileManagerWidth + 'px' }">
+    <div
+      v-if="!isZenModeActive"
+      class="relative file-manager-wrapper"
+      :style="{ width: fileManagerWidth + 'px' }"
+    >
       <FileManager
         ref="fileManagerRef"
         :root-files="rootFiles"
@@ -26,7 +33,8 @@
       />
     </div>
 
-    <div 
+    <div
+      v-if="!isZenModeActive"
       class="resize-handle" 
       @mousedown="startFileManagerResize"
       :class="{ 'is-resizing': isFileManagerResizing }"
@@ -42,6 +50,7 @@
         :current-file="currentFile"
         :is-preview-mode="isPreviewMode"
         :is-fullscreen-preview="isFullscreenPreview"
+        :is-zen-mode="isZenModeActive"
         :split-position="splitPosition"
         :is-resizing="isResizing"
         :is-dark="isDark"
@@ -49,6 +58,7 @@
         @update:content="handleUpdateContent"
         @togglePreviewMode="togglePreviewMode"
         @toggleFullscreenPreview="toggleFullscreenPreview"
+        @toggleZenMode="handleToggleZenMode"
         @exitPreviewMode="exitPreviewMode"
         @startResize="startResize"
         @toggleTheme="toggleTheme"
@@ -143,6 +153,10 @@ const splitEditorRef = computed(() => editorComponent.value?.splitEditorRef)
 
 const isPreviewMode = ref(false)
 const isFullscreenPreview = ref(false)
+const isZenMode = ref(false)
+const isZenModeActive = computed(
+  () => isZenMode.value && isPreviewMode.value && isFullscreenPreview.value
+)
 const splitPosition = ref(50)
 const isResizing = ref(false)
 
@@ -285,6 +299,7 @@ const togglePreviewMode = () => {
   isPreviewMode.value = !isPreviewMode.value
   if (!isPreviewMode.value) {
     isFullscreenPreview.value = false
+    isZenMode.value = false
     setTimeout(() => {
       const editor = editorRef.value || splitEditorRef.value
       if (editor) editor.focus()
@@ -294,15 +309,33 @@ const togglePreviewMode = () => {
 
 const toggleFullscreenPreview = () => {
   isFullscreenPreview.value = !isFullscreenPreview.value
+  if (!isFullscreenPreview.value) {
+    isZenMode.value = false
+  }
 }
 
 const exitPreviewMode = () => {
   isPreviewMode.value = false
   isFullscreenPreview.value = false
+  isZenMode.value = false
   setTimeout(() => {
     const editor = editorRef.value || splitEditorRef.value
     if (editor) editor.focus()
   }, 100)
+}
+
+const handleToggleZenMode = () => {
+  if (!isPreviewMode.value) {
+    isPreviewMode.value = true
+  }
+  if (!isFullscreenPreview.value) {
+    isFullscreenPreview.value = true
+  }
+  isZenMode.value = !isZenMode.value
+}
+
+const handleToggleOutline = () => {
+  editorComponent.value?.toggleOutline?.()
 }
 
 const startResize = (e) => {
@@ -339,7 +372,15 @@ const handleSave = () => {
 }
 
 useKeyboardShortcuts({
-  onSave: handleSave
+  onSave: handleSave,
+  onToggleZenMode: handleToggleZenMode,
+  onToggleOutline: handleToggleOutline,
+  onToggleTheme: toggleTheme,
+  onEscape: () => {
+    if (isZenMode.value) {
+      isZenMode.value = false
+    }
+  }
 })
 
 import { onMounted } from 'vue'

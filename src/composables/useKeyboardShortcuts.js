@@ -46,6 +46,27 @@ export function useKeyboardShortcuts(handlers) {
       return
     }
 
+    // Alt + Z: Toggle Zen mode
+    if (!isCtrl && e.altKey && e.key.toLowerCase() === 'z') {
+      e.preventDefault()
+      handlers.onToggleZenMode?.()
+      return
+    }
+
+    // Alt + H: Toggle document outline
+    if (!isCtrl && e.altKey && e.key.toLowerCase() === 'h') {
+      e.preventDefault()
+      handlers.onToggleOutline?.()
+      return
+    }
+
+    // Alt + L: Toggle theme
+    if (!isCtrl && e.altKey && e.key.toLowerCase() === 'l') {
+      e.preventDefault()
+      handlers.onToggleTheme?.()
+      return
+    }
+
     // Ctrl/Cmd + B: 切换编辑器/预览分割
     if (isCtrl && e.key === 'b') {
       e.preventDefault()
