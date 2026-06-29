@@ -131,17 +131,6 @@ function scrollToHeading(heading) {
   position: relative;
 }
 
-.doc-outline.is-dark {
-  --outline-bg: #0f172a;
-  --outline-border: #334155;
-  --outline-text: #94a3b8;
-  --outline-text-hover: #e2e8f0;
-  --outline-active: #3b82f6;
-  --outline-item-hover: rgba(59, 130, 246, 0.08);
-  --outline-item-active: rgba(59, 130, 246, 0.12);
-  --outline-glow: rgba(59, 130, 246, 0.15);
-}
-
 .doc-outline::before {
   content: '';
   position: absolute;

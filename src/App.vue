@@ -44,7 +44,7 @@
       <div class="resize-line"></div>
     </div>
 
-    <!-- 编辑器 -->
+    <!-- 编辑器区域 -->
     <div class="flex-1 min-w-0 flex flex-col editor-wrapper">
       <Editor
         v-if="currentFile"
@@ -79,8 +79,8 @@
               </svg>
               <div class="empty-icon-glow"></div>
             </div>
-            <h2 class="text-xl font-semibold mb-3 empty-title">没有打开的文件</h2>
-            <p class="text-sm opacity-60 empty-desc">请在左侧文件管理器中选择一个文件，或创建一个新文件</p>
+            <h2 class="text-xl font-semibold mb-3 empty-title">没有打开的文档</h2>
+            <p class="text-sm opacity-60 empty-desc">请在左侧文件管理器中选择一个文档，或创建一个新文档</p>
             <div class="mt-6 flex items-center justify-center gap-2 empty-hint">
               <kbd class="px-2 py-1 rounded text-xs font-mono border empty-kbd">Ctrl</kbd>
               <span class="text-xs opacity-40">+</span>
@@ -160,7 +160,7 @@ import { useTheme } from './composables/useTheme.js'
 import { useTabs } from './composables/useTabs.js'
 import { useKeyboardShortcuts } from './composables/useKeyboardShortcuts.js'
 
-const { theme, isDark, toggleTheme, setTheme } = useTheme()
+const { theme, isDark, toggleTheme, toggleThemePrevious, setTheme } = useTheme()
 const fileSystem = useFileSystem()
 const { closeTab, validateTabs } = useTabs()
 
@@ -185,12 +185,14 @@ const splitPosition = ref(50)
 const isResizing = ref(false)
 const ONBOARDING_KEY = 'blur_editor_onboarding_seen'
 const THEME_OPTIONS = [
-  { id: 'dark', title: '暗色（默认）' },
-  { id: 'light', title: '亮色' },
+  { id: 'lightgrey', title: '浅灰' },
   { id: 'midnight', title: '午夜' },
-  { id: 'forest', title: '森林' },
-  { id: 'sunset', title: '晚霞' },
-  { id: 'lavender', title: '薰衣草' }
+  { id: 'lightgoldenrodyellow', title: '浅秋黄' },
+  { id: 'lavender', title: '薰衣草' },
+  { id: 'beige', title: '米黄' },
+  { id: 'antiquewhite', title: '古董白' },
+  { id: 'cornsilk', title: '米绸色' },
+  { id: 'ivory', title: '象牙白' }
 ]
 
 const fileManagerWidth = ref(parseInt(localStorage.getItem('fileManagerWidth')) || 256)
@@ -339,23 +341,22 @@ function handleImport(files) {
     fileSystem.setCurrentFile(firstNewFile.id)
   }
 }
-
 const commandPaletteCommands = computed(() => [
   { id: 'command:newFile', title: '新建文件', hint: '创建 Markdown 文件', group: '文件', tags: ['new', 'file'] },
-  { id: 'command:newFolder', title: '新建文件夹', hint: '创建文件夹', group: '文件', tags: ['new', 'folder'] },
-  { id: 'command:import', title: '导入文件', hint: '从本地导入 Markdown', group: '文件', tags: ['import', 'file'] },
-  { id: 'command:duplicate', title: '复制当前文件', hint: '复制当前文件到同目录', group: '文件', tags: ['copy', 'file'] },
-  { id: 'command:globalSearch', title: '全局搜索', hint: '在所有文件内查找', group: '检索', tags: ['search'] },
-  { id: 'command:togglePreview', title: '切换编辑/预览', hint: '切换模式', group: '视图', tags: ['preview'] },
-  { id: 'command:toggleSplit', title: '切换分栏', hint: '切换左右分栏', group: '视图', tags: ['split'] },
-  { id: 'command:toggleZen', title: '禅模式', hint: '沉浸式预览（Alt+Z）', group: '视图', tags: ['zen'] },
-  { id: 'command:toggleOutline', title: '切换文档大纲', hint: '显示/隐藏大纲', group: '视图', tags: ['outline'] },
-  { id: 'command:openCommandPalette', title: '打开命令面板', hint: '再次打开命令面板', group: '系统', tags: ['command'] },
-  { id: 'command:showOnboarding', title: '重看新手引导', hint: '打开新手引导', group: '帮助', tags: ['help', 'onboarding'] },
+  { id: 'command:newFolder', title: '新建文件夹', hint: '创建一个新文件夹', group: '文件', tags: ['new', 'folder'] },
+  { id: 'command:import', title: '导入文件', hint: '从本地导入 Markdown 文件', group: '文件', tags: ['import', 'file'] },
+  { id: 'command:duplicate', title: '复制当前文件', hint: '复制当前文件到当前目录', group: '文件', tags: ['copy', 'file'] },
+  { id: 'command:globalSearch', title: '全局搜索', hint: '快速搜索文档正文', group: '内容', tags: ['search'] },
+  { id: 'command:togglePreview', title: '切换编辑/预览', hint: '切换编辑与预览模式', group: '阅读', tags: ['preview'] },
+  { id: 'command:toggleSplit', title: '切换分栏', hint: '切换编辑器分栏', group: '阅读', tags: ['split'] },
+  { id: 'command:toggleZen', title: '切换禅模式', hint: '进入/退出禅模式（Alt+Z）', group: '阅读', tags: ['zen'] },
+  { id: 'command:toggleOutline', title: '切换文档大纲', hint: '显示或隐藏文档大纲', group: '阅读', tags: ['outline'] },
+  { id: 'command:openCommandPalette', title: '打开命令面板', hint: '打开全局命令面板（Alt+K）', group: '系统', tags: ['command'] },
+  { id: 'command:showOnboarding', title: '查看新手引导', hint: '重新打开新手引导', group: '帮助', tags: ['help', 'onboarding'] },
   ...THEME_OPTIONS.map((item) => ({
     id: `theme:${item.id}`,
     title: `切换主题：${item.title}`,
-    hint: '主题切换（Alt+L）',
+    hint: `切换主题：${item.title}`,
     group: '主题',
     tags: ['theme', item.id],
     theme: item.id
@@ -490,6 +491,7 @@ useKeyboardShortcuts({
   onToggleZenMode: handleToggleZenMode,
   onToggleOutline: handleToggleOutline,
   onToggleTheme: toggleTheme,
+  onTogglePrevTheme: toggleThemePrevious,
   onOpenCommandPalette: handleOpenCommandPalette,
   onEscape: () => {
     if (showCommandPalette.value) {
@@ -638,7 +640,7 @@ onMounted(() => {
   box-shadow: 0 0 8px var(--accent-glow);
 }
 
-/* 页面过渡动画 */
+/* 页面切换动画 */
 .fade-scale-enter-active,
 .fade-scale-leave-active {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -650,7 +652,7 @@ onMounted(() => {
   transform: scale(0.97);
 }
 
-/* 模态框过渡 */
+/* 模态框动画 */
 .modal-enter-active,
 .modal-leave-active {
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
@@ -705,3 +707,4 @@ onMounted(() => {
   transform: translateX(-50%) translateY(-12px);
 }
 </style>
+

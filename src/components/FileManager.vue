@@ -411,9 +411,9 @@ function expandToFile(fileId, parentFolderIds) {
 
 .fm-action-btn.active,
 .fm-action-btn.active:hover {
-  background: rgba(96, 165, 250, 0.14);
+  background: var(--hover-bg-strong, rgba(96, 165, 250, 0.14));
   color: var(--accent-indigo, #60a5fa);
-  border-color: rgba(96, 165, 250, 0.25);
+  border-color: var(--accent-indigo, rgba(96, 165, 250, 0.25));
 }
 
 .fm-new-menu,
@@ -444,7 +444,7 @@ function expandToFile(fileId, parentFolderIds) {
 
 .fm-new-item:hover,
 .fm-sort-item:hover {
-  background: rgba(96, 165, 250, 0.09);
+  background: var(--hover-bg, rgba(96, 165, 250, 0.09));
 }
 
 .fm-new-item svg,
@@ -460,8 +460,8 @@ function expandToFile(fileId, parentFolderIds) {
 }
 
 .fm-sort-item.active {
-  background: rgba(96, 165, 250, 0.16);
-  border-color: rgba(96, 165, 250, 0.25);
+  background: var(--hover-bg-strong, rgba(96, 165, 250, 0.16));
+  border-color: var(--accent-indigo, rgba(96, 165, 250, 0.25));
 }
 
 .fm-toolbar {
@@ -571,7 +571,7 @@ function expandToFile(fileId, parentFolderIds) {
   height: 0.4rem;
   border-radius: 50%;
   background: var(--accent-indigo, #60a5fa);
-  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
+  box-shadow: 0 0 0 3px var(--accent-glow, rgba(96, 165, 250, 0.2));
 }
 
 .fm-search-results {
@@ -640,7 +640,7 @@ function expandToFile(fileId, parentFolderIds) {
 .fm-archive-list {
   border-top: 1px solid var(--border-color, rgba(148, 163, 184, 0.15));
   padding: 0.3rem 0.55rem 0.35rem;
-  background: rgba(30, 41, 59, 0.18);
+  background: var(--fm-archive-bg, rgba(30, 41, 59, 0.18));
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
@@ -672,7 +672,7 @@ function expandToFile(fileId, parentFolderIds) {
   padding: 0.08rem 0.38rem;
   border-radius: 0.65rem;
   color: var(--text-primary, #f8fafc);
-  background: rgba(96, 165, 250, 0.22);
+  background: var(--accent-glow, rgba(96, 165, 250, 0.22));
 }
 
 .fm-empty {

@@ -54,6 +54,12 @@ export function useKeyboardShortcuts(handlers) {
 
     if (!isCtrl && e.altKey && e.key.toLowerCase() === 'l') {
       e.preventDefault()
+      handlers.onTogglePrevTheme?.()
+      return
+    }
+
+    if (!isCtrl && e.altKey && e.key.toLowerCase() === 'n') {
+      e.preventDefault()
       handlers.onToggleTheme?.()
       return
     }

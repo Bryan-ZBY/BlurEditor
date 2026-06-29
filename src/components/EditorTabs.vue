@@ -340,16 +340,6 @@ defineExpose({ isTabDirty })
   -webkit-backdrop-filter: blur(8px);
 }
 
-.editor-tabs.is-dark {
-  --tabs-bg: rgba(15, 15, 26, 0.9);
-  --tabs-border: rgba(99, 102, 241, 0.15);
-  --tab-bg: rgba(30, 41, 59, 0.5);
-  --tab-active-bg: rgba(99, 102, 241, 0.15);
-  --tab-text: #64748b;
-  --tab-active-text: #f1f5f9;
-  --tab-hover-bg: rgba(99, 102, 241, 0.1);
-}
-
 .tabs-scroll {
   display: flex;
   align-items: stretch;
@@ -458,11 +448,6 @@ defineExpose({ isTabDirty })
   box-shadow: 0 0 0 3px var(--accent-glow, rgba(99,102,241,0.2));
 }
 
-.editor-tabs.is-dark .tab-title-input {
-  background: #1e293b;
-  color: #f1f5f9;
-}
-
 .tab-title-input.duplicate {
   border-color: #ef4444;
   color: #ef4444;
@@ -547,21 +532,13 @@ defineExpose({ isTabDirty })
   z-index: 9999;
   min-width: 190px;
   padding: 0.5rem;
-  background: var(--context-menu-bg, rgba(255,255,255,0.95));
-  border: 1px solid var(--context-menu-border, rgba(99,102,241,0.12));
+  background: var(--menu-bg, rgba(255,255,255,0.95));
+  border: 1px solid var(--menu-border, rgba(99,102,241,0.12));
   border-radius: 0.625rem;
   box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(0,0,0,0.03);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   transform-origin: top left;
-}
-
-.context-menu.is-dark {
-  --context-menu-bg: rgba(21, 21, 40, 0.95);
-  --context-menu-border: rgba(99, 102, 241, 0.2);
-  --context-menu-text: #e2e8f0;
-  --context-menu-hover: rgba(99, 102, 241, 0.12);
-  --context-menu-shortcut: #64748b;
 }
 
 .context-menu-item {
@@ -573,12 +550,12 @@ defineExpose({ isTabDirty })
   cursor: pointer;
   font-size: 0.8125rem;
   font-weight: 500;
-  color: var(--context-menu-text, #334155);
+  color: var(--text-primary, #334155);
   transition: all 0.15s ease;
 }
 
 .context-menu-item:hover {
-  background: var(--context-menu-hover, rgba(99,102,241,0.06));
+  background: var(--menu-hover, rgba(99,102,241,0.06));
   transform: translateX(2px);
 }
 
@@ -601,7 +578,7 @@ defineExpose({ isTabDirty })
   margin-left: auto;
   font-size: 0.7rem;
   font-weight: 500;
-  color: var(--context-menu-shortcut, #94a3b8);
+  color: var(--text-muted, #94a3b8);
   padding: 0.125rem 0.375rem;
   background: var(--hover-bg, rgba(0,0,0,0.04));
   border-radius: 0.25rem;
@@ -610,7 +587,7 @@ defineExpose({ isTabDirty })
 .context-menu-divider {
   height: 1px;
   margin: 0.375rem 0;
-  background: var(--context-menu-border, rgba(99,102,241,0.1));
+  background: var(--menu-border, rgba(99,102,241,0.1));
 }
 
 /* 上下文菜单动画 */

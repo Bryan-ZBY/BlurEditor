@@ -18,9 +18,9 @@
       @renameTab="handleRenameTab"
     />
 
-    <!-- 主内容区 -->
+      <!-- 编辑区域 -->
     <div class="editor-main">
-      <!-- 编辑器区域 -->
+      <!-- 编辑区域容器 -->
       <div class="editor-area">
         <!-- 顶部工具栏 -->
         <div v-if="!isZenMode" class="top-bar">
@@ -38,7 +38,7 @@
               @click="showOutline = !showOutline"
               class="icon-btn"
               :class="{ active: showOutline }"
-              :title="showOutline ? '隐藏大纲' : '显示大纲'"
+              :title="showOutline ? '关闭大纲' : '显示大纲'"
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h7"/>
@@ -73,14 +73,14 @@
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
                     </svg>
-                    <span>导出纯文本</span>
+                    <span>导出 TXT 文件</span>
                   </div>
                   <div class="export-divider"></div>
                   <div class="export-item" @click="handleExport('richtext')">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
                     </svg>
-                    <span>复制为富文本</span>
+                    <span>导出富文本</span>
                   </div>
                 </div>
               </Transition>
@@ -89,7 +89,7 @@
             <button
               @click="$emit('toggleTheme')"
               class="icon-btn"
-              :title="`切换主题 (${isDark ? '暗色' : '浅色'} -> 下一个)`"
+              :title="`切换主题 (${isDark ? '深色' : '浅色'} -> 下一个)`"
             >
               <Transition name="spin" mode="out-in">
                 <svg v-if="isDark" key="dark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -100,12 +100,12 @@
                 </svg>
               </Transition>
             </button>
-            <!-- 分屏切换 -->
+            <!-- 分栏切换 -->
             <button
               @click="toggleSplitMode"
               class="icon-btn"
               :class="{ active: !isFullscreenPreview && isPreviewMode }"
-              :title="isFullscreenPreview ? '切换分屏' : '退出分屏'"
+              :title="isFullscreenPreview ? '切换分栏' : '切换左右分栏'"
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <rect x="3" y="3" width="7" height="18" rx="1"/>
@@ -116,7 +116,7 @@
             <button
               @click="showPreviewSettings = !showPreviewSettings"
               class="icon-btn preview-settings-btn"
-              title="阅读设置"
+              title="预览设置"
             >
               <span class="zen-btn-icon">Aa</span>
             </button>
@@ -169,7 +169,7 @@
           </div>
         </div>
 
-        <!-- 编辑器内容区 -->
+        <!-- 编辑区域 -->
         <div class="editor-content">
           <Transition name="crossfade" mode="out-in">
             <div v-if="!isPreviewMode" class="editor-wrapper" key="editor">
@@ -177,7 +177,7 @@
                 :value="content"
                 ref="editorRef"
                 class="editor-textarea custom-scrollbar"
-                placeholder="开始输入 Markdown 内容..."
+                placeholder="请在此输入 Markdown 内容..."
                 @input="handleInput"
                 spellcheck="false"
                 autocorrect="off"
@@ -195,7 +195,7 @@
                   :value="content"
                   ref="splitEditorRef"
                   class="editor-textarea split no-scrollbar"
-                  placeholder="开始输入 Markdown 内容..."
+                  placeholder="请在此输入 Markdown 内容..."
                   @input="handleInput"
                   @scroll="syncPreviewScroll"
                   spellcheck="false"
@@ -304,7 +304,7 @@ const activeHeadingId = ref('')
 
 const FONT_FAMILY_OPTIONS = {
   system: "'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif",
-  serif: "Georgia, 'Times New Roman', 'Nimbus Roman No9 L', serif",
+  serif: "fangsong, 'FangSong', STFangSong, 'STFangsong', serif",
   mono: "'SF Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace"
 }
 
@@ -312,7 +312,7 @@ const instance = getCurrentInstance()
 const getPreviewEl = () => instance?.refs?.previewRef
 const getSplitEditorEl = () => instance?.refs?.splitEditorRef
 
-// 动态加载 highlight.js 主题 - 始终使用深色主题
+// 加载 highlight.js 高亮主题并应用代码样式
 let hljsStyleEl = null
 function loadHljsTheme(isDark) {
   document.querySelectorAll('[data-hljs-theme]').forEach(el => el.remove())
@@ -685,7 +685,7 @@ function handleExport(format) {
       break
     case 'richtext':
       copyAsRichText(props.content).then(() => {
-        alert('已复制为富文本到剪贴板')
+        alert('已复制富文本到剪贴板')
       })
       break
   }
@@ -758,7 +758,7 @@ onMounted(() => {
   })
 })
 
-// 监听主题变化，切换 highlight.js 样式
+// 监听主题变化并更新 highlight.js 样式
 watch(() => props.isDark, (newVal) => {
   loadHljsTheme(newVal)
 })
@@ -777,21 +777,6 @@ defineExpose({ editorRef, splitEditorRef, toggleOutline })
   overflow: hidden;
 }
 
-.editor-container.is-dark {
-  --editor-bg: #0f0f1a;
-  --top-bar-bg: rgba(15, 15, 26, 0.85);
-  --top-bar-border: rgba(99, 102, 241, 0.15);
-  --text-primary: #f1f5f9;
-  --text-muted: #64748b;
-  --icon-btn-bg: rgba(30, 41, 59, 0.6);
-  --icon-btn-hover: rgba(51, 65, 85, 0.8);
-  --icon-btn-active: rgba(99, 102, 241, 0.25);
-  --divider: rgba(99, 102, 241, 0.2);
-  --menu-bg: rgba(21, 21, 40, 0.95);
-  --menu-border: rgba(99, 102, 241, 0.2);
-  --menu-hover: rgba(99, 102, 241, 0.12);
-  --preview-bg: #12121f;
-}
 
 .editor-main {
   display: flex;
@@ -807,7 +792,7 @@ defineExpose({ editorRef, splitEditorRef, toggleOutline })
   min-width: 0;
 }
 
-/* 顶部工具栏 - 玻璃态 */
+/* 顶部工具栏 - 毛玻璃效果 */
 .top-bar {
   display: flex;
   align-items: center;
@@ -854,7 +839,7 @@ defineExpose({ editorRef, splitEditorRef, toggleOutline })
   gap: 0.375rem;
 }
 
-/* 图标按钮 - 精致动画 */
+/* 图标按钮 - 悬停动画 */
 .icon-btn {
   display: flex;
   align-items: center;
@@ -1062,7 +1047,7 @@ defineExpose({ editorRef, splitEditorRef, toggleOutline })
   transform: rotate(90deg) scale(0.8);
 }
 
-/* 编辑器内容区 */
+/* 编辑区域 */
 .editor-content {
   flex: 1;
   display: flex;
@@ -1127,7 +1112,7 @@ defineExpose({ editorRef, splitEditorRef, toggleOutline })
   position: relative;
 }
 
-/* 拖拽手柄 - 发光效果 */
+/* 分割线 - 拖拽效果 */
 .resize-handle {
   width: 5px;
   cursor: col-resize;
@@ -1307,7 +1292,7 @@ defineExpose({ editorRef, splitEditorRef, toggleOutline })
   width: 60%;
 }
 
-/* 代码块头部动画 - 始终显示 */
+/* 代码块头部显示与交互 */
 :deep(.code-block-header) {
   opacity: 1;
 }

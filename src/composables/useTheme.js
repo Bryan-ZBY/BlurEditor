@@ -1,21 +1,45 @@
 import { ref, computed } from 'vue'
 
 const THEME_KEY = 'editor_theme'
-const THEME_SEQUENCE = ['dark', 'light', 'midnight', 'forest', 'sunset', 'lavender']
-const DARK_THEMES = new Set(THEME_SEQUENCE.filter((theme) => theme !== 'light'))
+const THEME_SEQUENCE = [
+  'lightgrey',
+  'midnight',
+  'lightgoldenrodyellow',
+  'lavender',
+  'antiquewhite',
+  'beige',
+  'cornsilk',
+  'ivory',
+  'lightgrey'
+]
+const DARK_THEMES = new Set(['midnight', 'lavender', 'lightgoldenrodyellow'])
+const LIGHT_THEMES = new Set(THEME_SEQUENCE.filter((theme) => !DARK_THEMES.has(theme)))
+const THEME_ALIASES = {
+  dark: 'midnight',
+  light: 'beige',
+}
 
 export function useTheme() {
   const savedTheme = localStorage.getItem(THEME_KEY)
-  const initialTheme = THEME_SEQUENCE.includes(savedTheme) ? savedTheme : 'dark'
+  const normalizedTheme = THEME_ALIASES[savedTheme] || savedTheme
+  const initialTheme = THEME_SEQUENCE.includes(normalizedTheme) ? normalizedTheme : 'midnight'
   const theme = ref(initialTheme)
 
   const isDark = computed(() => DARK_THEMES.has(theme.value))
-  const isLight = computed(() => theme.value === 'light')
+  const isLight = computed(() => LIGHT_THEMES.has(theme.value))
 
   function toggleTheme() {
     const currentIndex = THEME_SEQUENCE.indexOf(theme.value)
     const nextIndex = (currentIndex + 1) % THEME_SEQUENCE.length
     theme.value = THEME_SEQUENCE[nextIndex]
+    localStorage.setItem(THEME_KEY, theme.value)
+    applyTheme()
+  }
+
+  function toggleThemePrevious() {
+    const currentIndex = THEME_SEQUENCE.indexOf(theme.value)
+    const prevIndex = (currentIndex - 1 + THEME_SEQUENCE.length) % THEME_SEQUENCE.length
+    theme.value = THEME_SEQUENCE[prevIndex]
     localStorage.setItem(THEME_KEY, theme.value)
     applyTheme()
   }
@@ -41,6 +65,7 @@ export function useTheme() {
     isDark,
     isLight,
     toggleTheme,
+    toggleThemePrevious,
     setTheme
   }
 }

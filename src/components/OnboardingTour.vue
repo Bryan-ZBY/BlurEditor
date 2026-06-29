@@ -46,7 +46,7 @@ const steps = computed(() => [
   },
   {
     title: '快捷键优化',
-    desc: 'Alt+K 打开命令面板，Alt+Z 进入/退出禅模式，Alt+H 切换文档大纲，Alt+L 切换主题。'
+    desc: 'Alt+K 打开命令面板，Alt+Z 进入/退出禅模式，Alt+H 切换文档大纲，Alt+L 切换上一个主题，Alt+N 切换下一个主题。'
   },
   {
     title: '文件管理增强',
