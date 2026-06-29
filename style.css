@@ -135,6 +135,226 @@
   --accent-glow: rgba(59, 130, 246, 0.25);
 }
 
+[data-theme="midnight"] {
+  --editor-bg: #070b16;
+  --editor-bg-split: #060d1a;
+  --editor-text: #e2ebff;
+  --editor-placeholder: rgba(148, 163, 184, 0.35);
+
+  --toolbar-bg: rgba(10, 18, 40, 0.85);
+  --toolbar-border: rgba(96, 165, 250, 0.18);
+
+  --preview-bg: #080d1d;
+  --preview-toolbar-bg: rgba(8, 13, 29, 0.9);
+  --preview-toolbar-border: rgba(96, 165, 250, 0.12);
+
+  --btn-secondary-bg: rgba(30, 41, 59, 0.55);
+  --btn-secondary-bg-hover: rgba(51, 65, 85, 0.75);
+  --btn-secondary-border: rgba(96, 165, 250, 0.25);
+  --btn-secondary-text: #c7d2fe;
+  --btn-primary-bg: linear-gradient(135deg, #3b82f6 0%, #0ea5e9 100%);
+  --btn-primary-bg-hover: linear-gradient(135deg, #60a5fa 0%, #38bdf8 100%);
+  --btn-primary-text: #ffffff;
+
+  --text-primary: #e5edff;
+  --text-secondary: #b6c7ed;
+  --text-muted: #8295b7;
+
+  --border-color: rgba(96, 165, 250, 0.15);
+  --border-color-strong: rgba(96, 165, 250, 0.32);
+
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: rgba(96, 165, 250, 0.25);
+  --scrollbar-thumb-hover: rgba(96, 165, 250, 0.5);
+  --scrollbar-glow: rgba(96, 165, 250, 0.3);
+
+  --dialog-bg: #0b1329;
+  --dialog-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(96, 165, 250, 0.1);
+
+  --input-bg: rgba(30, 41, 59, 0.45);
+  --input-border: rgba(96, 165, 250, 0.2);
+  --input-text: #e2e8f0;
+  --input-placeholder: #64748b;
+
+  --hover-bg: rgba(96, 165, 250, 0.08);
+  --hover-bg-strong: rgba(96, 165, 250, 0.15);
+
+  --glass-bg: rgba(10, 18, 40, 0.7);
+  --glass-border: rgba(96, 165, 250, 0.15);
+  --glass-backdrop: blur(16px) saturate(1.2);
+
+  --accent-indigo: #93c5fd;
+  --accent-purple: #3b82f6;
+  --accent-blue: #60a5fa;
+  --accent-cyan: #22d3ee;
+  --accent-glow: rgba(96, 165, 250, 0.42);
+}
+
+[data-theme="forest"] {
+  --editor-bg: #071410;
+  --editor-bg-split: #06120e;
+  --editor-text: #dcfce7;
+  --editor-placeholder: rgba(134, 239, 172, 0.28);
+
+  --toolbar-bg: rgba(7, 28, 21, 0.85);
+  --toolbar-border: rgba(34, 197, 94, 0.2);
+
+  --preview-bg: #081915;
+  --preview-toolbar-bg: rgba(8, 25, 21, 0.9);
+  --preview-toolbar-border: rgba(34, 197, 94, 0.15);
+
+  --btn-secondary-bg: rgba(22, 78, 61, 0.5);
+  --btn-secondary-bg-hover: rgba(21, 128, 61, 0.7);
+  --btn-secondary-border: rgba(74, 222, 128, 0.25);
+  --btn-secondary-text: #bbf7d0;
+  --btn-primary-bg: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+  --btn-primary-bg-hover: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+  --btn-primary-text: #ecfdf5;
+
+  --text-primary: #ecfdf5;
+  --text-secondary: #86efac;
+  --text-muted: #6ee7b7;
+
+  --border-color: rgba(74, 222, 128, 0.16);
+  --border-color-strong: rgba(74, 222, 128, 0.34);
+
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: rgba(74, 222, 128, 0.25);
+  --scrollbar-thumb-hover: rgba(74, 222, 128, 0.5);
+  --scrollbar-glow: rgba(74, 222, 128, 0.3);
+
+  --dialog-bg: #05201a;
+  --dialog-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(74, 222, 128, 0.12);
+
+  --input-bg: rgba(20, 83, 45, 0.45);
+  --input-border: rgba(74, 222, 128, 0.2);
+  --input-text: #ecfdf5;
+  --input-placeholder: #6ee7b7;
+
+  --hover-bg: rgba(34, 197, 94, 0.08);
+  --hover-bg-strong: rgba(34, 197, 94, 0.16);
+
+  --glass-bg: rgba(7, 20, 16, 0.7);
+  --glass-border: rgba(74, 222, 128, 0.15);
+  --glass-backdrop: blur(16px) saturate(1.2);
+
+  --accent-indigo: #4ade80;
+  --accent-purple: #22c55e;
+  --accent-blue: #10b981;
+  --accent-cyan: #67e8f9;
+  --accent-glow: rgba(74, 222, 128, 0.42);
+}
+
+[data-theme="sunset"] {
+  --editor-bg: #2a1110;
+  --editor-bg-split: #241018;
+  --editor-text: #ffedd5;
+  --editor-placeholder: rgba(254, 215, 170, 0.35);
+
+  --toolbar-bg: rgba(42, 17, 16, 0.85);
+  --toolbar-border: rgba(251, 146, 60, 0.24);
+
+  --preview-bg: #251015;
+  --preview-toolbar-bg: rgba(39, 16, 20, 0.9);
+  --preview-toolbar-border: rgba(251, 146, 60, 0.15);
+
+  --btn-secondary-bg: rgba(68, 32, 32, 0.48);
+  --btn-secondary-bg-hover: rgba(120, 53, 15, 0.65);
+  --btn-secondary-border: rgba(251, 146, 60, 0.25);
+  --btn-secondary-text: #fed7aa;
+  --btn-primary-bg: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  --btn-primary-bg-hover: linear-gradient(135deg, #fb923c 0%, #f97316 100%);
+  --btn-primary-text: #fff7ed;
+
+  --text-primary: #ffedd5;
+  --text-secondary: #fdba74;
+  --text-muted: #fbbf24;
+
+  --border-color: rgba(251, 146, 60, 0.16);
+  --border-color-strong: rgba(251, 146, 60, 0.32);
+
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: rgba(251, 146, 60, 0.25);
+  --scrollbar-thumb-hover: rgba(251, 146, 60, 0.52);
+  --scrollbar-glow: rgba(251, 146, 60, 0.32);
+
+  --dialog-bg: #301418;
+  --dialog-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.68), 0 0 0 1px rgba(251, 146, 60, 0.12);
+
+  --input-bg: rgba(90, 28, 25, 0.45);
+  --input-border: rgba(251, 146, 60, 0.2);
+  --input-text: #ffedd5;
+  --input-placeholder: #fbbf24;
+
+  --hover-bg: rgba(251, 146, 60, 0.08);
+  --hover-bg-strong: rgba(251, 146, 60, 0.16);
+
+  --glass-bg: rgba(42, 17, 16, 0.7);
+  --glass-border: rgba(251, 146, 60, 0.15);
+  --glass-backdrop: blur(16px) saturate(1.2);
+
+  --accent-indigo: #fde68a;
+  --accent-purple: #f97316;
+  --accent-blue: #fb923c;
+  --accent-cyan: #fcd34d;
+  --accent-glow: rgba(251, 146, 60, 0.4);
+}
+
+[data-theme="lavender"] {
+  --editor-bg: #150f1f;
+  --editor-bg-split: #1b1429;
+  --editor-text: #ede9fe;
+  --editor-placeholder: rgba(221, 214, 254, 0.35);
+
+  --toolbar-bg: rgba(20, 15, 33, 0.86);
+  --toolbar-border: rgba(196, 181, 253, 0.2);
+
+  --preview-bg: #1c1427;
+  --preview-toolbar-bg: rgba(28, 20, 39, 0.9);
+  --preview-toolbar-border: rgba(196, 181, 253, 0.12);
+
+  --btn-secondary-bg: rgba(76, 29, 149, 0.35);
+  --btn-secondary-bg-hover: rgba(109, 40, 217, 0.55);
+  --btn-secondary-border: rgba(196, 181, 253, 0.28);
+  --btn-secondary-text: #ddd6fe;
+  --btn-primary-bg: linear-gradient(135deg, #7c3aed 0%, #4c1d95 100%);
+  --btn-primary-bg-hover: linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%);
+  --btn-primary-text: #faf5ff;
+
+  --text-primary: #ede9fe;
+  --text-secondary: #c4b5fd;
+  --text-muted: #a78bfa;
+
+  --border-color: rgba(196, 181, 253, 0.18);
+  --border-color-strong: rgba(196, 181, 253, 0.34);
+
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: rgba(196, 181, 253, 0.25);
+  --scrollbar-thumb-hover: rgba(196, 181, 253, 0.52);
+  --scrollbar-glow: rgba(196, 181, 253, 0.28);
+
+  --dialog-bg: #22172f;
+  --dialog-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.68), 0 0 0 1px rgba(196, 181, 253, 0.12);
+
+  --input-bg: rgba(71, 35, 130, 0.46);
+  --input-border: rgba(196, 181, 253, 0.2);
+  --input-text: #e9d5ff;
+  --input-placeholder: #c4b5fd;
+
+  --hover-bg: rgba(196, 181, 253, 0.08);
+  --hover-bg-strong: rgba(196, 181, 253, 0.18);
+
+  --glass-bg: rgba(20, 15, 33, 0.72);
+  --glass-border: rgba(196, 181, 253, 0.15);
+  --glass-backdrop: blur(16px) saturate(1.2);
+
+  --accent-indigo: #a78bfa;
+  --accent-purple: #8b5cf6;
+  --accent-blue: #7c3aed;
+  --accent-cyan: #c4b5fd;
+  --accent-glow: rgba(196, 181, 253, 0.38);
+}
+
 /* ========================
    主题工具类
    ======================== */

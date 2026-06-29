@@ -189,7 +189,7 @@ const currentFile = fileSystem.currentFile
 const rootFiles = fileSystem.rootFiles
 const archivedFiles = fileSystem.archivedFiles
 
-const themeClass = computed(() => isDark.value ? 'theme-dark' : 'theme-light')
+const themeClass = computed(() => `theme-${theme.value}`)
 
 function getChildren(parentId) {
   return fileSystem.getChildren(parentId)

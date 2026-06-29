@@ -89,7 +89,7 @@
             <button
               @click="$emit('toggleTheme')"
               class="icon-btn"
-              :title="isDark ? '切换白天模式' : '切换夜间模式'"
+              :title="`切换主题 (${isDark ? '暗色' : '浅色'} -> 下一个)`"
             >
               <Transition name="spin" mode="out-in">
                 <svg v-if="isDark" key="dark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
