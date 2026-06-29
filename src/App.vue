@@ -1,97 +1,105 @@
 <template>
   <div
+    ref="appRootRef"
     class="flex w-screen h-screen overflow-hidden app-root"
     :class="[themeClass, { 'zen-mode': isZenModeActive }]"
+    :style="appRootStyle"
   >
-    <!-- 文件管理器 -->
-    <div
-      v-if="!isZenModeActive"
-      class="relative file-manager-wrapper"
-      :style="{ width: fileManagerWidth + 'px' }"
-    >
-      <FileManager
-        ref="fileManagerRef"
-        :root-files="rootFiles"
-        :archived-files="archivedFiles"
-        :files="fileSystem.files.value"
-        :current-file-id="currentFileId"
-        :get-children="getChildren"
-        :is-dark="isDark"
-        :sort-mode="fileSystem.sortMode.value"
-        :get-sorted-files="fileSystem.getSortedFiles"
-        @select-file="handleSelectFile"
-        @create-file="handleCreateFile"
-        @create-folder="handleCreateFolder"
-        @delete-file="handleDeleteFile"
-        @rename-file="handleRenameFile"
-        @archive-file="handleArchiveFile"
-        @unarchive-file="handleUnarchiveFile"
-        @duplicate-file="handleDuplicateFile"
-        @export-file="handleExportFile"
-        @move-file="handleMoveFile"
-        @set-sort-mode="handleSetSortMode"
-        @toggleFavorite="handleToggleFavorite"
-        @open-import="showImportModal = true"
-      />
-    </div>
+    <div ref="appViewportRef" class="app-viewport-shell" :style="appViewportStyle">
+      <!-- 文件管理器 -->
+      <div
+        v-if="!isZenModeActive"
+        class="relative file-manager-wrapper"
+        :style="{ width: fileManagerWidth + 'px' }"
+      >
+        <FileManager
+          ref="fileManagerRef"
+          :root-files="rootFiles"
+          :archived-files="archivedFiles"
+          :files="fileSystem.files.value"
+          :current-file-id="currentFileId"
+          :get-children="getChildren"
+          :is-dark="isDark"
+          :sort-mode="fileSystem.sortMode.value"
+          :get-sorted-files="fileSystem.getSortedFiles"
+          @select-file="handleSelectFile"
+          @create-file="handleCreateFile"
+          @create-folder="handleCreateFolder"
+          @delete-file="handleDeleteFile"
+          @rename-file="handleRenameFile"
+          @archive-file="handleArchiveFile"
+          @unarchive-file="handleUnarchiveFile"
+          @duplicate-file="handleDuplicateFile"
+          @export-file="handleExportFile"
+          @move-file="handleMoveFile"
+          @set-sort-mode="handleSetSortMode"
+          @toggleFavorite="handleToggleFavorite"
+          @open-import="showImportModal = true"
+        />
+      </div>
 
-    <div
-      v-if="!isZenModeActive"
-      class="resize-handle" 
-      @mousedown="startFileManagerResize"
-      :class="{ 'is-resizing': isFileManagerResizing }"
-    >
-      <div class="resize-line"></div>
-    </div>
+      <div
+        v-if="!isZenModeActive"
+        class="resize-handle" 
+        @mousedown="startFileManagerResize"
+        :class="{ 'is-resizing': isFileManagerResizing }"
+      >
+        <div class="resize-line"></div>
+      </div>
 
-    <!-- 编辑器区域 -->
-    <div class="flex-1 min-w-0 flex flex-col editor-wrapper">
-      <Editor
-        v-if="currentFile"
-        :content="currentFile?.content || ''"
-        :current-file="currentFile"
-        :is-preview-mode="isPreviewMode"
-        :is-fullscreen-preview="isFullscreenPreview"
-        :is-zen-mode="isZenModeActive"
-        :split-position="splitPosition"
-        :is-resizing="isResizing"
-        :is-dark="isDark"
-        :files="fileSystem.files.value"
-        @update:content="handleUpdateContent"
-        @togglePreviewMode="togglePreviewMode"
-        @toggleFullscreenPreview="toggleFullscreenPreview"
-        @toggleZenMode="handleToggleZenMode"
-        @exitPreviewMode="exitPreviewMode"
-        @startResize="startResize"
-        @toggleTheme="toggleTheme"
-        @tabChange="handleTabChange"
-        @globalSearchOpen="handleGlobalSearchOpen"
-        @renameFile="handleRenameFile"
-        ref="editorComponent"
-      />
+      <!-- 编辑器区域 -->
+      <div ref="editorAreaRef" class="flex-1 min-w-0 flex flex-col editor-wrapper">
+        <Editor
+          v-if="currentFile"
+          :content="currentFile?.content || ''"
+          :current-file="currentFile"
+          :is-preview-mode="isPreviewMode"
+          :is-fullscreen-preview="isFullscreenPreview"
+          :is-zen-mode="isZenModeActive"
+          :split-position="splitPosition"
+          :is-resizing="isResizing"
+          :is-dark="isDark"
+          :files="fileSystem.files.value"
+          :preview-page-width="appPreviewPageWidth"
+          :preview-page-centered="isPreviewPageCentered"
+          @update:content="handleUpdateContent"
+          @update:previewPageWidth="handleUpdatePreviewPageWidth"
+          @update:previewPageCentered="handleUpdatePreviewPageCentered"
+          @togglePreviewMode="togglePreviewMode"
+          @toggleFullscreenPreview="toggleFullscreenPreview"
+          @toggleZenMode="handleToggleZenMode"
+          @exitPreviewMode="exitPreviewMode"
+          @startResize="startResize"
+          @toggleTheme="toggleTheme"
+          @tabChange="handleTabChange"
+          @globalSearchOpen="handleGlobalSearchOpen"
+          @renameFile="handleRenameFile"
+          ref="editorComponent"
+        />
 
-      <Transition name="fade-scale" mode="out-in">
-        <div v-if="!currentFile" class="w-full h-full flex items-center justify-center empty-state">
-          <div class="text-center empty-content">
-            <div class="empty-icon-wrapper">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-20 h-20 mx-auto mb-6 empty-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              <div class="empty-icon-glow"></div>
-            </div>
-            <h2 class="text-xl font-semibold mb-3 empty-title">没有打开的文档</h2>
-            <p class="text-sm opacity-60 empty-desc">请在左侧文件管理器中选择一个文档，或创建一个新文档</p>
-            <div class="mt-6 flex items-center justify-center gap-2 empty-hint">
-              <kbd class="px-2 py-1 rounded text-xs font-mono border empty-kbd">Ctrl</kbd>
-              <span class="text-xs opacity-40">+</span>
-              <kbd class="px-2 py-1 rounded text-xs font-mono border empty-kbd">Shift</kbd>
-              <span class="text-xs opacity-40">+</span>
-              <kbd class="px-2 py-1 rounded text-xs font-mono border empty-kbd">F</kbd>
-              <span class="text-xs opacity-50 ml-1">全局搜索</span>
+        <Transition name="fade-scale" mode="out-in">
+          <div v-if="!currentFile" class="w-full h-full flex items-center justify-center empty-state">
+            <div class="text-center empty-content">
+              <div class="empty-icon-wrapper">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-20 h-20 mx-auto mb-6 empty-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <div class="empty-icon-glow"></div>
+              </div>
+              <h2 class="text-xl font-semibold mb-3 empty-title">没有打开的文档</h2>
+              <p class="text-sm opacity-60 empty-desc">请在左侧文件管理器中选择一个文档，或创建一个新文档</p>
+              <div class="mt-6 flex items-center justify-center gap-2 empty-hint">
+                <kbd class="px-2 py-1 rounded text-xs font-mono border empty-kbd">Ctrl</kbd>
+                <span class="text-xs opacity-40">+</span>
+                <kbd class="px-2 py-1 rounded text-xs font-mono border empty-kbd">Shift</kbd>
+                <span class="text-xs opacity-40">+</span>
+                <kbd class="px-2 py-1 rounded text-xs font-mono border empty-kbd">F</kbd>
+                <span class="text-xs opacity-50 ml-1">全局搜索</span>
+              </div>
             </div>
           </div>
-        </div>
-      </Transition>
+        </Transition>
+      </div>
     </div>
 
     <!-- 导入文件弹窗 -->
@@ -164,6 +172,12 @@ const { theme, isDark, toggleTheme, toggleThemePrevious, setTheme } = useTheme()
 const fileSystem = useFileSystem()
 const { closeTab, validateTabs } = useTabs()
 
+const clamp = (value, min, max) => Math.max(min, Math.min(max, value))
+const appRootRef = ref(null)
+const appViewportRef = ref(null)
+const editorAreaRef = ref(null)
+const getViewportRect = () => appViewportRef.value?.getBoundingClientRect() || null
+
 const showImportModal = ref(false)
 const showGlobalSearch = ref(false)
 const showSaveNotification = ref(false)
@@ -184,6 +198,8 @@ const isZenModeActive = computed(
 const splitPosition = ref(50)
 const isResizing = ref(false)
 const ONBOARDING_KEY = 'blur_editor_onboarding_seen'
+const PREVIEW_PAGE_WIDTH_KEY = 'blur_editor_preview_page_width'
+const PREVIEW_PAGE_CENTERED_KEY = 'blur_editor_preview_page_centered'
 const THEME_OPTIONS = [
   { id: 'lightgrey', title: '浅灰' },
   { id: 'midnight', title: '午夜' },
@@ -197,6 +213,26 @@ const THEME_OPTIONS = [
 
 const fileManagerWidth = ref(parseInt(localStorage.getItem('fileManagerWidth')) || 256)
 const isFileManagerResizing = ref(false)
+const appRootStyle = computed(() => ({
+  '--app-root-outside-bg': 'color-mix(in srgb, var(--editor-bg) 90%, var(--text-muted) 10%)'
+}))
+const appPreviewPageWidth = ref(clamp(parseInt(localStorage.getItem(PREVIEW_PAGE_WIDTH_KEY) || 100, 10), 40, 100))
+const isPreviewPageCentered = ref(localStorage.getItem(PREVIEW_PAGE_CENTERED_KEY) === '1')
+const appViewportStyle = computed(() => {
+  const widthPercent = clamp(appPreviewPageWidth.value, 40, 100)
+  const width = `${widthPercent}%`
+  return isPreviewPageCentered.value
+    ? { width, marginLeft: 'auto', marginRight: 'auto' }
+    : { width }
+})
+const handleUpdatePreviewPageWidth = (value) => {
+  appPreviewPageWidth.value = clamp(parseInt(value || 100, 10), 40, 100)
+  localStorage.setItem(PREVIEW_PAGE_WIDTH_KEY, String(appPreviewPageWidth.value))
+}
+const handleUpdatePreviewPageCentered = (value) => {
+  isPreviewPageCentered.value = !!value
+  localStorage.setItem(PREVIEW_PAGE_CENTERED_KEY, isPreviewPageCentered.value ? '1' : '0')
+}
 
 function startFileManagerResize(e) {
   isFileManagerResizing.value = true
@@ -206,8 +242,12 @@ function startFileManagerResize(e) {
 
 function onFileManagerResize(e) {
   if (!isFileManagerResizing.value) return
-  const newWidth = e.clientX
-  if (newWidth > 120 && newWidth < window.innerWidth - 200) {
+  const rect = getViewportRect()
+  const appLeft = rect?.left ?? 0
+  const appWidth = rect?.width || window.innerWidth
+  const newWidth = e.clientX - appLeft
+  const maxFileManagerWidth = appWidth - 220
+  if (newWidth > 120 && newWidth < maxFileManagerWidth) {
     fileManagerWidth.value = newWidth
     localStorage.setItem('fileManagerWidth', newWidth.toString())
   }
@@ -463,8 +503,10 @@ const startResize = (e) => {
 const handleResize = (e) => {
   if (!isResizing.value) return
   requestAnimationFrame(() => {
-    const containerWidth = window.innerWidth - 256
-    const newPosition = ((e.clientX - 256) / containerWidth) * 100
+    const rect = editorAreaRef.value?.getBoundingClientRect()
+    const containerWidth = rect?.width || (window.innerWidth - fileManagerWidth.value)
+    if (!containerWidth || containerWidth <= 0) return
+    const newPosition = ((e.clientX - (rect?.left ?? 0)) / containerWidth) * 100
     if (newPosition >= 20 && newPosition <= 80) {
       splitPosition.value = newPosition
     }
@@ -533,8 +575,17 @@ onMounted(() => {
 
 <style scoped>
 .app-root {
-  background: var(--editor-bg);
+  background: var(--app-root-outside-bg, color-mix(in srgb, var(--editor-bg) 90%, var(--text-muted) 10%));
   transition: background var(--transition-normal) ease;
+  position: relative;
+}
+
+.app-viewport-shell {
+  background: var(--editor-bg);
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  display: flex;
 }
 
 .file-manager-wrapper {

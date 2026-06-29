@@ -140,6 +140,28 @@
                 <button @click="setLineHeight('1.75')" :class="{ active: previewLineHeight === '1.75' }">1.75</button>
                 <button @click="setLineHeight('1.95')" :class="{ active: previewLineHeight === '1.95' }">1.95</button>
               </div>
+              <div class="setting-group">
+                <label>页面宽度 {{ previewPageWidth }}%</label>
+                <input
+                  type="range"
+                  min="40"
+                  max="100"
+                  step="1"
+                  v-model="previewPageWidth"
+                  @change="commitPreviewPageWidth"
+                  class="setting-slider"
+                />
+                <span class="setting-range-value">{{ previewPageWidth }}%</span>
+              </div>
+              <div class="setting-group setting-group-toggle">
+                <label>居中显示</label>
+                <label class="toggle-switch">
+                  <input type="checkbox" v-model="previewPageCentered" />
+                  <span class="toggle-track">
+                    <span class="toggle-thumb"></span>
+                  </span>
+                </label>
+              </div>
             </div>
             <button
               v-if="isPreviewMode"
@@ -266,7 +288,9 @@ const props = defineProps({
   splitPosition: Number,
   isResizing: Boolean,
   isDark: Boolean,
-  files: { type: Array, default: () => [] }
+  files: { type: Array, default: () => [] },
+  previewPageWidth: { type: Number, default: 100 },
+  previewPageCentered: { type: Boolean, default: false }
 })
 
 const emit = defineEmits([
@@ -279,7 +303,9 @@ const emit = defineEmits([
   'toggleTheme',
   'tabChange',
   'globalSearchOpen',
-  'renameFile'
+  'renameFile',
+  'update:previewPageWidth',
+  'update:previewPageCentered'
 ])
 
 const editorRef = ref(null)
@@ -294,6 +320,23 @@ const showPreviewSettings = ref(false)
 const previewFont = ref('system')
 const previewFontSize = ref('16')
 const previewLineHeight = ref('1.8')
+const clampPreviewPageWidth = (value) => Math.max(40, Math.min(100, Number(value) || 100))
+const previewPageWidth = ref(clampPreviewPageWidth(props.previewPageWidth))
+const previewPageCentered = computed({
+  get: () => !!props.previewPageCentered,
+  set: (value) => emit('update:previewPageCentered', !!value)
+})
+
+const commitPreviewPageWidth = () => {
+  emit('update:previewPageWidth', clampPreviewPageWidth(previewPageWidth.value))
+}
+
+watch(
+  () => props.previewPageWidth,
+  (value) => {
+    previewPageWidth.value = clampPreviewPageWidth(value)
+  }
+)
 
 const { tabs, activeTabId, openTab, closeTab, closeOtherTabs, closeLeftTabs, closeRightTabs, closeAllTabs, setActiveTab, setTabDirty, isTabDirty, updateTabName, moveTab, togglePinTab } = useTabs()
 const parserSource = computed(() => props.content || '')
@@ -1285,11 +1328,67 @@ defineExpose({ editorRef, splitEditorRef, toggleOutline })
   border-color: var(--accent-indigo, #6366f1);
 }
 
+.preview-settings .setting-slider {
+  width: 100%;
+  margin-top: 0.25rem;
+  accent-color: var(--accent-indigo, #6366f1);
+}
+
+.preview-settings .setting-range-value {
+  display: inline-block;
+  margin-top: 0.15rem;
+  font-size: 0.75rem;
+  color: var(--text-muted, #64748b);
+}
+
+.preview-settings .setting-group.setting-group-toggle {
+  align-items: center;
+  justify-content: space-between;
+}
+
+.preview-settings .toggle-switch {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.preview-settings .toggle-switch input {
+  display: none;
+}
+
+.preview-settings .toggle-track {
+  width: 2rem;
+  height: 1rem;
+  border-radius: 999px;
+  background: var(--menu-border, #e5e7eb);
+  position: relative;
+  transition: background-color 0.2s ease;
+}
+
+.preview-settings .toggle-thumb {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s ease;
+}
+
+.preview-settings .toggle-switch input:checked + .toggle-track {
+  background: var(--accent-indigo, #6366f1);
+}
+
+.preview-settings .toggle-switch input:checked + .toggle-track .toggle-thumb {
+  transform: translateX(1rem);
+}
+
 .editor-container.zen-mode .preview-content {
-  max-width: 60%;
+  max-width: 100%;
+  width: 100%;
   margin: 0 auto;
   padding: 1.5rem 1rem;
-  width: 60%;
 }
 
 /* 代码块头部显示与交互 */

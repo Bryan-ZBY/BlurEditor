@@ -9,8 +9,7 @@ const THEME_SEQUENCE = [
   'antiquewhite',
   'beige',
   'cornsilk',
-  'ivory',
-  'lightgrey'
+  'ivory'
 ]
 const DARK_THEMES = new Set(['midnight', 'lavender', 'lightgoldenrodyellow'])
 const LIGHT_THEMES = new Set(THEME_SEQUENCE.filter((theme) => !DARK_THEMES.has(theme)))
@@ -28,8 +27,13 @@ export function useTheme() {
   const isDark = computed(() => DARK_THEMES.has(theme.value))
   const isLight = computed(() => LIGHT_THEMES.has(theme.value))
 
-  function toggleTheme() {
+  function getCurrentIndex() {
     const currentIndex = THEME_SEQUENCE.indexOf(theme.value)
+    return currentIndex >= 0 ? currentIndex : 0
+  }
+
+  function toggleTheme() {
+    const currentIndex = getCurrentIndex()
     const nextIndex = (currentIndex + 1) % THEME_SEQUENCE.length
     theme.value = THEME_SEQUENCE[nextIndex]
     localStorage.setItem(THEME_KEY, theme.value)
@@ -37,7 +41,7 @@ export function useTheme() {
   }
 
   function toggleThemePrevious() {
-    const currentIndex = THEME_SEQUENCE.indexOf(theme.value)
+    const currentIndex = getCurrentIndex()
     const prevIndex = (currentIndex - 1 + THEME_SEQUENCE.length) % THEME_SEQUENCE.length
     theme.value = THEME_SEQUENCE[prevIndex]
     localStorage.setItem(THEME_KEY, theme.value)
