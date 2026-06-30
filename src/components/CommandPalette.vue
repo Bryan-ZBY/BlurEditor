@@ -11,36 +11,49 @@
               ref="inputRef"
               v-model="query"
               type="text"
-              placeholder="命令搜索（例如：切换主题）"
+              placeholder="搜索命令、文件、正文或标签..."
               @keydown.enter="runCurrent"
               @keydown.arrow-down.prevent="move(1)"
               @keydown.arrow-up.prevent="move(-1)"
               @keydown.escape.prevent="close"
             />
           </div>
-          <button class="icon-btn" @click="close" title="关闭">✕</button>
+          <button class="icon-btn" @click="close" title="关闭">×</button>
         </div>
 
-        <div class="command-sections custom-scrollbar">
-          <div v-for="group in groupedCommands" :key="group.name" class="command-group">
-            <div class="command-group-title">{{ group.name }}</div>
+        <div class="command-sections custom-scrollbar" ref="resultsRef">
+          <div v-for="group in groupedResults" :key="group.name" class="command-group">
+            <div class="command-group-title">
+              <span>{{ group.name }}</span>
+              <span>{{ group.results.length }}</span>
+            </div>
             <button
-              v-for="(command, index) in group.commands"
-              :key="command.id"
+              v-for="(result, index) in group.results"
+              :key="result.id"
               class="command-item"
-              :class="{ active: globalIndex(groupIndex(group.name), index) === activeIndex }"
+              :class="{ active: group.start + index === activeIndex }"
               @mousedown.prevent
-              @click="runCommand(command)"
+              @click="runResult(result)"
+              @mouseenter="activeIndex = group.start + index"
             >
-              <span class="command-title">{{ command.title }}</span>
-              <span class="command-hint">{{ command.hint }}</span>
+              <span class="result-kind">{{ result.badge }}</span>
+              <span class="result-copy">
+                <span class="command-title" v-html="highlightResultText(result.title)"></span>
+                <span class="command-hint" v-html="highlightResultText(result.hint)"></span>
+              </span>
+              <span class="result-action">{{ result.actionLabel }}</span>
             </button>
           </div>
-          <div v-if="commands.length === 0" class="command-empty">暂无可用命令</div>
+          <div v-if="flattenedResults.length === 0" class="command-empty">
+            <p>没有找到匹配结果</p>
+            <span>试试文件名、正文关键词、标签名或命令名称</span>
+          </div>
         </div>
 
         <div class="command-footer">
-          <span><kbd>Alt</kbd> + <kbd>K</kbd> 打开面板</span>
+          <span><kbd>↑↓</kbd> 选择</span>
+          <span><kbd>Enter</kbd> 打开</span>
+          <span><kbd>Ctrl</kbd> + <kbd>K</kbd> 或 <kbd>Alt</kbd> + <kbd>F</kbd> 全局入口</span>
         </div>
       </div>
     </div>
@@ -48,81 +61,249 @@
 </template>
 
 <script setup>
-import { computed, ref, watch, nextTick } from 'vue'
+import { computed, ref, watch, nextTick, onMounted } from 'vue'
 
 const props = defineProps({
   visible: { type: Boolean, default: false },
   isDark: { type: Boolean, default: false },
-  commands: { type: Array, default: () => [] }
+  commands: { type: Array, default: () => [] },
+  files: { type: Array, default: () => [] }
 })
 
-const emit = defineEmits(['close', 'execute'])
+const emit = defineEmits(['close', 'execute', 'open-file'])
 
 const query = ref('')
 const activeIndex = ref(0)
 const inputRef = ref(null)
+const resultsRef = ref(null)
 
-const filteredCommands = computed(() => {
-  const q = query.value.trim().toLowerCase()
-  if (!q) return props.commands
-  return props.commands.filter((command) => {
-    const text = `${command.title} ${command.hint}`.toLowerCase()
-    return text.includes(q) || (command.tags || []).some((tag) => tag.toLowerCase().includes(q))
-  })
+const normalizedQuery = computed(() => query.value.trim().toLowerCase())
+
+const searchableFiles = computed(() => {
+  return (props.files || []).filter((file) => file?.type === 'file' && !file.isArchived)
 })
 
-const groupedCommands = computed(() => {
-  const groups = new Map()
-  filteredCommands.value.forEach((command) => {
-    const key = command.group || '其它'
-    if (!groups.has(key)) groups.set(key, [])
-    groups.get(key).push(command)
-  })
-  return [...groups.entries()].map(([name, commands]) => ({ name, commands }))
+const allResults = computed(() => {
+  const q = normalizedQuery.value
+  return [
+    ...commandResults(q),
+    ...fileResults(q),
+    ...contentResults(q),
+    ...tagResults(q)
+  ]
 })
 
-function groupIndex(groupName) {
-  let sum = 0
-  for (const group of groupedCommands.value) {
-    if (group.name === groupName) return sum
-    sum += group.commands.length
-  }
-  return 0
+const groupedResults = computed(() => {
+  const groups = []
+  let cursor = 0
+
+  allResults.value.forEach((result) => {
+    let group = groups.find((item) => item.name === result.group)
+    if (!group) {
+      group = { name: result.group, start: cursor, results: [] }
+      groups.push(group)
+    }
+    group.results.push(result)
+    cursor += 1
+  })
+
+  return groups
+})
+
+const flattenedResults = computed(() => allResults.value)
+
+function commandResults(q) {
+  const source = props.commands || []
+  const filtered = q
+    ? source.filter((command) => {
+      const tags = (command.tags || []).join(' ')
+      const text = `${command.title} ${command.hint} ${tags}`.toLowerCase()
+      return text.includes(q)
+    })
+    : source
+
+  return filtered.slice(0, 12).map((command) => ({
+    id: command.id,
+    type: 'command',
+    group: q ? '命令' : (command.group || '命令'),
+    badge: '命令',
+    title: command.title,
+    hint: command.hint,
+    actionLabel: '执行',
+    command
+  }))
 }
 
-function globalIndex(startIndex, localIndex) {
-  return startIndex + localIndex
+function fileResults(q) {
+  if (!q) return []
+
+  return searchableFiles.value
+    .filter((file) => normalize(file.name).includes(q))
+    .sort((a, b) => {
+      const aExact = normalize(a.name).startsWith(q) ? 0 : 1
+      const bExact = normalize(b.name).startsWith(q) ? 0 : 1
+      if (aExact !== bExact) return aExact - bExact
+      return (b.lastOpenedAt || b.updatedAt || 0) - (a.lastOpenedAt || a.updatedAt || 0)
+    })
+    .slice(0, 8)
+    .map((file) => ({
+      id: `file:${file.id}`,
+      type: 'file',
+      group: '文件',
+      badge: '文件',
+      title: file.name,
+      hint: getFilePath(file.id),
+      actionLabel: '打开',
+      fileId: file.id
+    }))
+}
+
+function contentResults(q) {
+  if (!q) return []
+
+  const results = []
+  for (const file of searchableFiles.value) {
+    const content = file.content || ''
+    const lines = content.split('\n')
+
+    lines.forEach((line, lineIndex) => {
+      if (!normalize(line).includes(q)) return
+
+      results.push({
+        id: `content:${file.id}:${lineIndex}`,
+        type: 'content',
+        group: '正文',
+        badge: '正文',
+        title: file.name,
+        hint: `第 ${lineIndex + 1} 行 · ${buildPreview(line, q)}`,
+        actionLabel: '定位',
+        fileId: file.id,
+        lineIndex
+      })
+    })
+  }
+
+  return results
+}
+
+function tagResults(q) {
+  if (!q) return []
+
+  const results = []
+  for (const file of searchableFiles.value) {
+    const matchedTag = (file.tags || []).map(tagToText).find((tag) => normalize(tag).includes(q))
+    if (!matchedTag) continue
+
+    results.push({
+      id: `tag:${file.id}:${matchedTag}`,
+      type: 'tag',
+      group: '标签',
+      badge: '标签',
+      title: matchedTag,
+      hint: file.name,
+      actionLabel: '打开',
+      fileId: file.id
+    })
+
+    if (results.length >= 8) break
+  }
+
+  return results
+}
+
+function normalize(value) {
+  return String(value || '').toLowerCase()
+}
+
+function tagToText(tag) {
+  if (!tag) return ''
+  if (typeof tag === 'object') return tag.name || tag.title || tag.id || ''
+  return String(tag)
+}
+
+function buildPreview(line, q) {
+  const source = String(line || '').trim()
+  if (!source) return '空行'
+
+  const index = normalize(source).indexOf(q)
+  if (index === -1) return source.slice(0, 72)
+
+  const start = Math.max(0, index - 24)
+  const end = Math.min(source.length, index + q.length + 48)
+  return `${start > 0 ? '...' : ''}${source.slice(start, end)}${end < source.length ? '...' : ''}`
+}
+
+function escapeHtml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+function highlightResultText(value) {
+  const text = escapeHtml(value)
+  const q = query.value.trim()
+  if (!q) return text
+
+  const escapedQuery = escapeHtml(q).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return text.replace(new RegExp(`(${escapedQuery})`, 'gi'), '<mark>$1</mark>')
+}
+
+function getFilePath(fileId) {
+  const path = []
+  let current = props.files.find((file) => file.id === fileId)
+  while (current) {
+    path.unshift(current.name)
+    current = props.files.find((file) => file.id === current.parentId)
+  }
+  return path.join(' / ')
 }
 
 function move(delta) {
-  const total = filteredCommands.value.length
+  const total = flattenedResults.value.length
   if (total === 0) return
   activeIndex.value = (activeIndex.value + delta + total) % total
-}
-
-function getByGlobalIndex(index) {
-  let cursor = 0
-  for (const command of filteredCommands.value) {
-    if (cursor === index) return command
-    cursor += 1
-  }
-  return null
+  scrollToActive()
 }
 
 function runCurrent() {
-  const command = getByGlobalIndex(activeIndex.value)
-  if (!command) return
-  emit('execute', command)
+  const result = flattenedResults.value[activeIndex.value]
+  if (!result) return
+  runResult(result)
+}
+
+function runResult(result) {
+  if (result.type === 'command') {
+    emit('execute', result.command)
+  } else {
+    emit('open-file', {
+      fileId: result.fileId,
+      lineIndex: result.lineIndex,
+      source: result.type,
+      query: query.value
+    })
+  }
   close()
 }
 
-function runCommand(command) {
-  emit('execute', command)
-  close()
+function scrollToActive() {
+  nextTick(() => {
+    const container = resultsRef.value
+    const activeItem = container?.querySelector('.command-item.active')
+    activeItem?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  })
 }
 
 function close() {
   emit('close')
+}
+
+function focusInput() {
+  nextTick(() => {
+    inputRef.value?.focus()
+  })
 }
 
 watch(() => props.visible, (val) => {
@@ -131,9 +312,17 @@ watch(() => props.visible, (val) => {
     activeIndex.value = 0
     return
   }
-  nextTick(() => {
-    inputRef.value?.focus()
-  })
+  focusInput()
+})
+
+watch([query, allResults], () => {
+  activeIndex.value = 0
+})
+
+onMounted(() => {
+  if (props.visible) {
+    focusInput()
+  }
 })
 </script>
 
@@ -151,7 +340,7 @@ watch(() => props.visible, (val) => {
 }
 
 .command-palette {
-  width: 680px;
+  width: 720px;
   max-width: calc(100vw - 2rem);
   border-radius: 0.9rem;
   border: 1px solid var(--border-color, rgba(99, 102, 241, 0.2));
@@ -204,6 +393,7 @@ watch(() => props.visible, (val) => {
   color: inherit;
   padding: 0 0.8rem 0 2.55rem;
   font-size: 0.95rem;
+  outline: none;
 }
 
 .icon-btn {
@@ -216,8 +406,13 @@ watch(() => props.visible, (val) => {
   cursor: pointer;
 }
 
+.icon-btn:hover {
+  color: var(--text-primary, #e2e8f0);
+  background: rgba(99, 102, 241, 0.12);
+}
+
 .command-sections {
-  max-height: 55vh;
+  max-height: 58vh;
   overflow: auto;
   padding: 0.55rem;
 }
@@ -231,6 +426,8 @@ watch(() => props.visible, (val) => {
 }
 
 .command-group-title {
+  display: flex;
+  justify-content: space-between;
   padding: 0.2rem 0.4rem 0.45rem;
   font-size: 0.72rem;
   color: var(--text-muted, #94a3b8);
@@ -240,9 +437,10 @@ watch(() => props.visible, (val) => {
 
 .command-item {
   width: 100%;
-  display: flex;
+  display: grid;
+  grid-template-columns: 2.8rem minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
+  gap: 0.65rem;
   padding: 0.58rem 0.65rem;
   text-align: left;
   background: transparent;
@@ -257,21 +455,63 @@ watch(() => props.visible, (val) => {
   background: rgba(99, 102, 241, 0.14);
 }
 
+.result-kind {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.5rem;
+  height: 1.45rem;
+  border-radius: 0.45rem;
+  background: rgba(99, 102, 241, 0.14);
+  color: var(--accent-indigo, #6366f1);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.result-copy {
+  min-width: 0;
+  display: grid;
+  gap: 0.16rem;
+}
+
 .command-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 0.9rem;
+  font-weight: 600;
 }
 
 .command-hint {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 0.72rem;
   color: var(--text-muted, #94a3b8);
 }
 
+:deep(mark) {
+  padding: 0.02rem 0.14rem;
+  border-radius: 0.2rem;
+  background: rgba(250, 204, 21, 0.45);
+  color: inherit;
+}
+
+.result-action {
+  color: var(--text-muted, #94a3b8);
+  font-size: 0.72rem;
+}
+
 .command-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
   border-top: 1px solid var(--border-color, rgba(99, 102, 241, 0.15));
   padding: 0.55rem 0.8rem;
   color: var(--text-muted, #94a3b8);
   font-size: 0.72rem;
-  text-align: right;
 }
 
 .command-empty {
@@ -280,11 +520,35 @@ watch(() => props.visible, (val) => {
   padding: 2rem 1rem;
 }
 
+.command-empty p {
+  margin: 0 0 0.35rem;
+  color: var(--text-primary, #e2e8f0);
+}
+
+.command-empty span {
+  font-size: 0.78rem;
+}
+
 kbd {
   padding: 0 0.28rem;
   border-radius: 0.25rem;
   border: 1px solid var(--border-color, #cbd5e1);
   background: rgba(255, 255, 255, 0.15);
   font-size: 0.68rem;
+}
+
+@media (max-width: 720px) {
+  .command-footer {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .command-item {
+    grid-template-columns: 2.8rem minmax(0, 1fr);
+  }
+
+  .result-action {
+    display: none;
+  }
 }
 </style>

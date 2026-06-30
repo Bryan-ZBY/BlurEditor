@@ -36,7 +36,7 @@ function createDefaultFiles() {
         name: '欢迎使用.md',
         type: 'file',
         parentId: null,
-        content: `# 欢迎使用 Markdown 编辑器\n\n这是一个默认示例文件。\n\n## 功能清单\n\n- 文件管理：新建/删除/归档\n- 编辑/预览\n- 主题切换\n- 命令面板\n- 文档大纲\n\n## 示例标题\n\n### 子标题\n\n#### 三级标题\n\nMarkdown 代码示例：\n\n\`\`\`javascript\nfunction hello() {\n  return 'hello world'\n}\n\`\`\`\n`,
+        content: `# 欢迎使用 BlurEditor\n\nBlurEditor 是一个本地 Markdown 知识工作台，适合整理个人笔记、项目文档、会议纪要和技术草稿。\n\n## 你可以在这里做什么\n\n- 用左侧文件树管理文档和文件夹\n- 用标签页在多篇文档之间切换\n- 用分栏预览查看 Markdown 渲染结果\n- 用全局入口搜索命令、文件、正文和标签\n- 用全局入口执行新建、导入、预览、主题和大纲操作\n- 将内容导出为 Markdown、HTML、TXT 或富文本\n\n## 快速入口\n\n- Ctrl/Cmd+K 或 Alt+F：打开全局入口\n- Alt+H：显示或隐藏文档大纲\n- Alt+Z：进入或退出禅模式\n\n## Markdown 示例\n\n\`\`\`javascript\nfunction hello() {\n  return 'hello world'\n}\n\`\`\`\n`,
         isArchived: false,
         isFavorite: true,
         tags: [],

@@ -302,7 +302,6 @@ const emit = defineEmits([
   'startResize',
   'toggleTheme',
   'tabChange',
-  'globalSearchOpen',
   'renameFile',
   'update:previewPageWidth',
   'update:previewPageCentered'
@@ -357,6 +356,9 @@ const getSplitEditorEl = () => instance?.refs?.splitEditorRef
 
 // 加载 highlight.js 高亮主题并应用代码样式
 let hljsStyleEl = null
+let previewHighlightTimer = null
+let previewSearchActiveIndex = -1
+let previewSearchActiveQuery = ''
 function loadHljsTheme(isDark) {
   document.querySelectorAll('[data-hljs-theme]').forEach(el => el.remove())
   
@@ -712,6 +714,298 @@ function handleScrollToHeading({ heading }) {
   }
 }
 
+function getVisibleEditorEl() {
+  if (props.isPreviewMode && !props.isFullscreenPreview) {
+    return splitEditorRef.value
+  }
+
+  return editorRef.value || splitEditorRef.value
+}
+
+function scrollToLine(lineIndex = 0) {
+  nextTick(() => {
+    const editor = getVisibleEditorEl()
+    if (!editor) return
+
+    const lines = String(props.content || '').split('\n')
+    const lastLineIndex = Math.max(0, lines.length - 1)
+    const targetLine = Math.max(0, Math.min(Number(lineIndex) || 0, lastLineIndex))
+    const style = window.getComputedStyle(editor)
+    const fontSize = parseFloat(style.fontSize) || 16
+    const lineHeight = parseFloat(style.lineHeight) || fontSize * 1.6
+    const targetTop = Math.max(0, targetLine * lineHeight - editor.clientHeight * 0.35)
+    const cursor = lines
+      .slice(0, targetLine)
+      .reduce((sum, line) => sum + line.length + 1, 0)
+
+    editor.focus()
+    editor.scrollTop = targetTop
+    editor.setSelectionRange(cursor, cursor)
+  })
+}
+
+function markdownTableLineToText(line) {
+  const source = String(line || '').trim()
+  if (!source.includes('|')) return source
+
+  const cells = source
+    .replace(/^\|/, '')
+    .replace(/\|$/, '')
+    .split('|')
+    .map((cell) => cell.trim())
+    .filter(Boolean)
+
+  if (cells.length < 2) return source
+  if (cells.every((cell) => /^:?-{3,}:?$/.test(cell.replace(/\s+/g, '')))) {
+    return ''
+  }
+
+  return cells.join(' ')
+}
+
+function stripMarkdownLine(line) {
+  return markdownTableLineToText(line)
+    .replace(/^#{1,6}\s+/, '')
+    .replace(/^>\s*/, '')
+    .replace(/^[-*+]\s+\[[ xX]\]\s+/, '')
+    .replace(/^[-*+]\s+/, '')
+    .replace(/^\d+\.\s+/, '')
+    .replace(/^`{3,}\w*\s*/, '')
+    .replace(/[*_`~[\]()#>]/g, '')
+    .trim()
+}
+
+function normalizePreviewText(value) {
+  return String(value || '').replace(/\s+/g, ' ').trim().toLowerCase()
+}
+
+function getPreviewNodeText(node) {
+  if (!node) return ''
+  if (node.matches?.('table, thead, tbody, tr')) {
+    return Array.from(node.querySelectorAll('th, td'))
+      .map((cell) => cell.textContent || '')
+      .join(' ')
+  }
+
+  return node.textContent || ''
+}
+
+function escapeRegExp(value) {
+  return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+function getPreviewTargetScrollTop(preview, targetNode) {
+  const previewRect = preview.getBoundingClientRect()
+  const targetRect = targetNode.getBoundingClientRect()
+  return preview.scrollTop + targetRect.top - previewRect.top - preview.clientHeight * 0.18
+}
+
+function setPreviewScrollTop(preview, targetTop) {
+  const maxScrollTop = Math.max(0, preview.scrollHeight - preview.clientHeight)
+  const nextTop = Math.max(0, Math.min(targetTop, maxScrollTop))
+
+  preview.scrollTo?.({ top: nextTop, behavior: 'smooth' })
+  if (!preview.scrollTo) {
+    preview.scrollTop = nextTop
+  }
+}
+
+function clearPreviewSearchHighlight(preview = getPreviewEl()) {
+  if (previewHighlightTimer) {
+    clearTimeout(previewHighlightTimer)
+    previewHighlightTimer = null
+  }
+  if (!preview) return
+
+  preview.querySelectorAll('mark.preview-search-mark').forEach((mark) => {
+    const textNode = document.createTextNode(mark.textContent || '')
+    mark.replaceWith(textNode)
+    textNode.parentNode?.normalize?.()
+  })
+  preview.querySelectorAll('.preview-search-target').forEach((node) => {
+    node.classList.remove('preview-search-target')
+  })
+  previewSearchActiveIndex = -1
+  previewSearchActiveQuery = ''
+}
+
+function markPreviewText(root, query) {
+  const needle = String(query || '').trim()
+  if (!needle) return false
+
+  const regex = new RegExp(escapeRegExp(needle), 'gi')
+  const nodes = []
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      const parent = node.parentElement
+      if (!parent || parent.closest('mark, script, style, .copy-btn')) {
+        return NodeFilter.FILTER_REJECT
+      }
+      regex.lastIndex = 0
+      return regex.test(node.nodeValue || '')
+        ? NodeFilter.FILTER_ACCEPT
+        : NodeFilter.FILTER_REJECT
+    }
+  })
+
+  let node = walker.nextNode()
+  while (node) {
+    nodes.push(node)
+    node = walker.nextNode()
+  }
+
+  nodes.forEach((textNode) => {
+    const text = textNode.nodeValue || ''
+    const fragment = document.createDocumentFragment()
+    let cursor = 0
+    regex.lastIndex = 0
+
+    text.replace(regex, (match, offset) => {
+      if (offset > cursor) {
+        fragment.appendChild(document.createTextNode(text.slice(cursor, offset)))
+      }
+      const mark = document.createElement('mark')
+      mark.className = 'preview-search-mark'
+      mark.textContent = match
+      fragment.appendChild(mark)
+      cursor = offset + match.length
+      return match
+    })
+
+    if (cursor < text.length) {
+      fragment.appendChild(document.createTextNode(text.slice(cursor)))
+    }
+    textNode.replaceWith(fragment)
+  })
+
+  return nodes.length > 0
+}
+
+function getPreviewSearchMarks(preview) {
+  return Array.from(preview.querySelectorAll('mark.preview-search-mark'))
+}
+
+function getPreviewSearchTargetNode(mark) {
+  return mark?.closest?.('td, th, tr, h1, h2, h3, h4, h5, h6, p, li, blockquote, pre, table') || mark
+}
+
+function setActivePreviewSearchMark(preview, index) {
+  const marks = getPreviewSearchMarks(preview)
+  if (marks.length === 0) return false
+
+  const activeIndex = (index + marks.length) % marks.length
+  marks.forEach((mark) => mark.classList.remove('preview-search-current'))
+  preview.querySelectorAll('.preview-search-target').forEach((node) => {
+    node.classList.remove('preview-search-target')
+  })
+
+  const activeMark = marks[activeIndex]
+  const targetNode = getPreviewSearchTargetNode(activeMark)
+  activeMark.classList.add('preview-search-current')
+  targetNode?.classList?.add('preview-search-target')
+  setPreviewScrollTop(preview, getPreviewTargetScrollTop(preview, targetNode || activeMark))
+  previewSearchActiveIndex = activeIndex
+  return true
+}
+
+function armPreviewHighlightCleanup(preview) {
+  if (previewHighlightTimer) {
+    clearTimeout(previewHighlightTimer)
+  }
+  previewHighlightTimer = setTimeout(() => {
+    clearPreviewSearchHighlight(preview)
+  }, 6000)
+}
+
+function highlightPreviewSearchTarget(preview, targetNode, searchQuery, targetText) {
+  clearPreviewSearchHighlight(preview)
+  if (!targetNode) return
+
+  const cleanedQuery = stripMarkdownLine(searchQuery)
+  const needle = cleanedQuery || searchQuery
+  const highlighted = markPreviewText(preview, needle)
+  if (!highlighted && targetText) {
+    markPreviewText(targetNode, targetText)
+  }
+
+  const marks = getPreviewSearchMarks(preview)
+  const activeIndex = Math.max(0, marks.findIndex((mark) => targetNode.contains(mark)))
+  if (!setActivePreviewSearchMark(preview, activeIndex)) {
+    targetNode.classList.add('preview-search-target')
+  }
+  previewSearchActiveQuery = normalizePreviewText(needle || targetText)
+  armPreviewHighlightCleanup(preview)
+}
+
+function repeatPreviewSearch(direction = 1, searchQuery = '') {
+  const preview = getPreviewEl()
+  const needle = stripMarkdownLine(searchQuery) || searchQuery
+  const normalizedNeedle = normalizePreviewText(needle)
+  if (!preview || !normalizedNeedle) return false
+
+  const directionStep = direction >= 0 ? 1 : -1
+  const previousActiveIndex = previewSearchActiveIndex
+  const queryChanged = normalizePreviewText(previewSearchActiveQuery) !== normalizedNeedle
+  clearPreviewSearchHighlight(preview)
+  if (!markPreviewText(preview, needle)) return false
+
+  const marks = getPreviewSearchMarks(preview)
+  const baseIndex = queryChanged
+    ? (directionStep > 0 ? -1 : 0)
+    : previousActiveIndex
+  const nextIndex = baseIndex + directionStep
+
+  previewSearchActiveQuery = normalizedNeedle
+  const handled = setActivePreviewSearchMark(preview, nextIndex)
+  if (handled) {
+    armPreviewHighlightCleanup(preview)
+  }
+  return handled
+}
+
+function scrollPreviewToLine(lineIndex = 0, searchQuery = '') {
+  nextTick(() => {
+    requestAnimationFrame(() => {
+      const preview = getPreviewEl()
+      if (!preview) return
+
+      const lines = String(props.content || '').split('\n')
+      const lastLineIndex = Math.max(0, lines.length - 1)
+      const targetLine = Math.max(0, Math.min(Number(lineIndex) || 0, lastLineIndex))
+      const targetText = normalizePreviewText(stripMarkdownLine(lines[targetLine]))
+      const previousSameLineCount = targetText
+        ? lines
+          .slice(0, targetLine)
+          .filter((line) => normalizePreviewText(stripMarkdownLine(line)) === targetText)
+          .length
+        : 0
+
+      const blocks = Array.from(preview.querySelectorAll(
+        'h1, h2, h3, h4, h5, h6, p, li, blockquote, pre, tr, th, td, table, hr'
+      ))
+      const matches = targetText
+        ? blocks.filter((node) => normalizePreviewText(getPreviewNodeText(node)).includes(targetText))
+        : []
+      const targetNode = matches[Math.min(previousSameLineCount, Math.max(0, matches.length - 1))]
+
+      isSyncing.value = true
+      if (targetNode) {
+        setPreviewScrollTop(preview, getPreviewTargetScrollTop(preview, targetNode))
+        highlightPreviewSearchTarget(preview, targetNode, searchQuery, targetText)
+      } else {
+        const ratio = lastLineIndex > 0 ? targetLine / lastLineIndex : 0
+        setPreviewScrollTop(preview, ratio * Math.max(0, preview.scrollHeight - preview.clientHeight))
+        clearPreviewSearchHighlight(preview)
+      }
+
+      requestAnimationFrame(() => {
+        updateActiveHeadingFromScroll()
+        isSyncing.value = false
+      })
+    })
+  })
+}
+
 function handleExport(format) {
   showExportMenu.value = false
   const fileName = props.currentFile?.name || 'document.md'
@@ -806,7 +1100,7 @@ watch(() => props.isDark, (newVal) => {
   loadHljsTheme(newVal)
 })
 
-defineExpose({ editorRef, splitEditorRef, toggleOutline })
+defineExpose({ editorRef, splitEditorRef, toggleOutline, scrollToLine, scrollPreviewToLine, repeatPreviewSearch })
 </script>
 
 <style scoped>
@@ -1216,6 +1510,8 @@ defineExpose({ editorRef, splitEditorRef, toggleOutline })
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  min-width: 0;
+  min-height: 0;
   background: var(--preview-bg, #fff);
 }
 
@@ -1271,8 +1567,38 @@ defineExpose({ editorRef, splitEditorRef, toggleOutline })
 
 .preview-content {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 1.5rem 2rem;
+}
+
+:deep(.preview-search-target) {
+  border-radius: 0.55rem;
+  outline: 2px solid rgba(245, 158, 11, 0.55);
+  outline-offset: 0.25rem;
+  background: rgba(245, 158, 11, 0.12);
+  transition: background 0.2s ease, outline-color 0.2s ease;
+}
+
+:deep(tr.preview-search-target > th),
+:deep(tr.preview-search-target > td),
+:deep(th.preview-search-target),
+:deep(td.preview-search-target) {
+  background: rgba(245, 158, 11, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(245, 158, 11, 0.35);
+}
+
+:deep(mark.preview-search-mark) {
+  padding: 0.05rem 0.16rem;
+  border-radius: 0.22rem;
+  background: rgba(250, 204, 21, 0.55);
+  color: inherit;
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.35);
+}
+
+:deep(mark.preview-search-mark.preview-search-current) {
+  background: rgba(249, 115, 22, 0.72);
+  box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.45);
 }
 
 .preview-settings {

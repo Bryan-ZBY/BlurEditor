@@ -72,7 +72,6 @@
           @startResize="startResize"
           @toggleTheme="toggleTheme"
           @tabChange="handleTabChange"
-          @globalSearchOpen="handleGlobalSearchOpen"
           @renameFile="handleRenameFile"
           ref="editorComponent"
         />
@@ -91,10 +90,8 @@
               <div class="mt-6 flex items-center justify-center gap-2 empty-hint">
                 <kbd class="px-2 py-1 rounded text-xs font-mono border empty-kbd">Ctrl</kbd>
                 <span class="text-xs opacity-40">+</span>
-                <kbd class="px-2 py-1 rounded text-xs font-mono border empty-kbd">Shift</kbd>
-                <span class="text-xs opacity-40">+</span>
-                <kbd class="px-2 py-1 rounded text-xs font-mono border empty-kbd">F</kbd>
-                <span class="text-xs opacity-50 ml-1">全局搜索</span>
+                <kbd class="px-2 py-1 rounded text-xs font-mono border empty-kbd">K</kbd>
+                <span class="text-xs opacity-50 ml-1">全局入口</span>
               </div>
             </div>
           </div>
@@ -113,34 +110,16 @@
       />
     </Transition>
 
-    <!-- 全局搜索 -->
-    <Transition name="modal">
-      <GlobalSearch
-        v-if="showGlobalSearch"
-        :visible="showGlobalSearch"
-        :is-dark="isDark"
-        :files="fileSystem.files.value"
-        @close="showGlobalSearch = false"
-        @open="handleGlobalSearchOpen"
-      />
-    </Transition>
-
     <!-- 命令面板 -->
     <CommandPalette
       v-if="showCommandPalette"
       :visible="showCommandPalette"
       :is-dark="isDark"
       :commands="commandPaletteCommands"
+      :files="fileSystem.files.value"
       @close="showCommandPalette = false"
       @execute="handleCommandExecute"
-    />
-
-    <!-- 新手引导 -->
-    <OnboardingTour
-      v-if="showOnboarding"
-      :is-dark="isDark"
-      @complete="handleOnboardingComplete"
-      @close="showOnboarding = false"
+      @open-file="handleCommandPaletteOpenFile"
     />
 
     <!-- 保存提示 -->
@@ -156,13 +135,11 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import Editor from './components/Editor.vue'
 import FileManager from './components/FileManager.vue'
 import ImportModal from './components/ImportModal.vue'
-import GlobalSearch from './components/GlobalSearch.vue'
 import CommandPalette from './components/CommandPalette.vue'
-import OnboardingTour from './components/OnboardingTour.vue'
 import { useFileSystem } from './composables/useFileSystem.js'
 import { useTheme } from './composables/useTheme.js'
 import { useTabs } from './composables/useTabs.js'
@@ -179,10 +156,8 @@ const editorAreaRef = ref(null)
 const getViewportRect = () => appViewportRef.value?.getBoundingClientRect() || null
 
 const showImportModal = ref(false)
-const showGlobalSearch = ref(false)
 const showSaveNotification = ref(false)
 const showCommandPalette = ref(false)
-const showOnboarding = ref(false)
 
 const editorComponent = ref(null)
 const fileManagerRef = ref(null)
@@ -197,9 +172,9 @@ const isZenModeActive = computed(
 )
 const splitPosition = ref(50)
 const isResizing = ref(false)
-const ONBOARDING_KEY = 'blur_editor_onboarding_seen'
 const PREVIEW_PAGE_WIDTH_KEY = 'blur_editor_preview_page_width'
 const PREVIEW_PAGE_CENTERED_KEY = 'blur_editor_preview_page_centered'
+const LAST_SEARCH_QUERY_KEY = 'blur_editor_last_search_query'
 const THEME_OPTIONS = [
   { id: 'lightgrey', title: '浅灰' },
   { id: 'midnight', title: '午夜' },
@@ -263,6 +238,9 @@ const currentFileId = fileSystem.currentFileId
 const currentFile = fileSystem.currentFile
 const rootFiles = fileSystem.rootFiles
 const archivedFiles = fileSystem.archivedFiles
+const lastSearchQuery = ref(localStorage.getItem(LAST_SEARCH_QUERY_KEY) || '')
+const lastSearchLineIndex = ref(-1)
+const lastSearchFileId = ref(null)
 
 const themeClass = computed(() => `theme-${theme.value}`)
 
@@ -342,10 +320,6 @@ function handleCreateFolderAtRoot() {
   fileSystem.createFolder(null)
 }
 
-function handleOpenOnboarding() {
-  showOnboarding.value = true
-}
-
 function handleSetSortMode(mode) {
   fileSystem.setSortMode(mode)
 }
@@ -364,8 +338,135 @@ function handleTabChange(fileId) {
   }
 }
 
-function handleGlobalSearchOpen(fileId) {
+function rememberSearchQuery(searchQuery, fileId, lineIndex = -1) {
+  const query = String(searchQuery || '').trim()
+  if (!query) return
+
+  lastSearchQuery.value = query
+  lastSearchFileId.value = fileId || null
+  lastSearchLineIndex.value = Number.isFinite(lineIndex) ? lineIndex : -1
+  localStorage.setItem(LAST_SEARCH_QUERY_KEY, query)
+}
+
+function normalizeSearchText(value) {
+  return String(value || '').toLowerCase()
+}
+
+function getSearchLineMatches(content, searchQuery) {
+  const query = normalizeSearchText(searchQuery).trim()
+  if (!query) return []
+
+  const lines = String(content || '').split('\n')
+  let matches = lines
+    .map((line, index) => ({ line, index }))
+    .filter(({ line }) => normalizeSearchText(line).includes(query))
+    .map(({ index }) => index)
+
+  if (matches.length > 0) return matches
+
+  const queryWithoutExtension = query.replace(/\.(md|markdown|txt)$/i, '')
+  if (!queryWithoutExtension || queryWithoutExtension === query) return []
+
+  matches = lines
+    .map((line, index) => ({ line, index }))
+    .filter(({ line }) => normalizeSearchText(line).includes(queryWithoutExtension))
+    .map(({ index }) => index)
+
+  return matches
+}
+
+function handleRepeatSearch(direction = 1) {
+  if (
+    !isPreviewMode.value ||
+    showCommandPalette.value ||
+    showImportModal.value
+  ) {
+    return false
+  }
+
+  const file = currentFile.value
+  const query = lastSearchQuery.value.trim()
+  if (!file || !query) return false
+
+  const handledInPreview = editorComponent.value?.repeatPreviewSearch?.(direction, query)
+  if (handledInPreview) return true
+
+  const matches = getSearchLineMatches(file.content, query)
+  if (matches.length === 0) return false
+
+  const sameFile = lastSearchFileId.value === file.id
+  const currentLine = sameFile
+    ? lastSearchLineIndex.value
+    : (direction > 0 ? -1 : Number.POSITIVE_INFINITY)
+  const targetLine = direction > 0
+    ? (matches.find((index) => index > currentLine) ?? matches[0])
+    : ([...matches].reverse().find((index) => index < currentLine) ?? matches[matches.length - 1])
+
+  lastSearchFileId.value = file.id
+  lastSearchLineIndex.value = targetLine
+  openFileAt(file.id, targetLine, query, { rememberQuery: false })
+  return true
+}
+
+function findPreviewSearchLineIndex(fileId, searchQuery) {
+  const file = fileSystem.files.value.find((item) => item.id === fileId)
+  const lines = String(file?.content || '').split('\n')
+  const query = String(searchQuery || '').trim().toLowerCase()
+  if (!query) return 0
+
+  const directIndex = lines.findIndex((line) => line.toLowerCase().includes(query))
+  if (directIndex >= 0) return directIndex
+
+  const queryWithoutExtension = query.replace(/\.(md|markdown|txt)$/i, '')
+  if (queryWithoutExtension && queryWithoutExtension !== query) {
+    const nameIndex = lines.findIndex((line) => line.toLowerCase().includes(queryWithoutExtension))
+    if (nameIndex >= 0) return nameIndex
+  }
+
+  return 0
+}
+
+function openFileAt(fileId, lineIndex = null, searchQuery = '', options = {}) {
+  if (!fileId) return
+
   fileSystem.setCurrentFile(fileId)
+  const parentIds = fileSystem.getParentFolderIds(fileId)
+  if (parentIds.length > 0 && fileManagerRef.value) {
+    fileManagerRef.value.expandToFile(fileId, parentIds)
+  }
+
+  const hasLineIndex = Number.isFinite(lineIndex)
+  const shouldHighlightPreview = isPreviewMode.value && String(searchQuery || '').trim()
+
+  if (!hasLineIndex && !shouldHighlightPreview && options.rememberQuery !== false) {
+    rememberSearchQuery(searchQuery, fileId, -1)
+  }
+
+  if (hasLineIndex || shouldHighlightPreview) {
+    const scrollInPreview = isPreviewMode.value
+    const targetLineIndex = hasLineIndex
+      ? lineIndex
+      : findPreviewSearchLineIndex(fileId, searchQuery)
+
+    if (options.rememberQuery !== false) {
+      rememberSearchQuery(searchQuery, fileId, targetLineIndex)
+    }
+
+    if (!scrollInPreview) {
+      isPreviewMode.value = false
+      isFullscreenPreview.value = false
+      isZenMode.value = false
+    }
+    nextTick(() => {
+      setTimeout(() => {
+        if (scrollInPreview) {
+          editorComponent.value?.scrollPreviewToLine?.(targetLineIndex, searchQuery)
+        } else {
+          editorComponent.value?.scrollToLine?.(targetLineIndex)
+        }
+      }, 0)
+    })
+  }
 }
 
 function handleImport(files) {
@@ -386,13 +487,11 @@ const commandPaletteCommands = computed(() => [
   { id: 'command:newFolder', title: '新建文件夹', hint: '创建一个新文件夹', group: '文件', tags: ['new', 'folder'] },
   { id: 'command:import', title: '导入文件', hint: '从本地导入 Markdown 文件', group: '文件', tags: ['import', 'file'] },
   { id: 'command:duplicate', title: '复制当前文件', hint: '复制当前文件到当前目录', group: '文件', tags: ['copy', 'file'] },
-  { id: 'command:globalSearch', title: '全局搜索', hint: '快速搜索文档正文', group: '内容', tags: ['search'] },
-  { id: 'command:togglePreview', title: '切换编辑/预览', hint: '切换编辑与预览模式', group: '阅读', tags: ['preview'] },
-  { id: 'command:toggleSplit', title: '切换分栏', hint: '切换编辑器分栏', group: '阅读', tags: ['split'] },
+  { id: 'command:togglePreview', title: '切换编辑/预览', hint: '切换编辑与预览模式（Alt+V）', group: '阅读', tags: ['preview'] },
+  { id: 'command:toggleSplit', title: '切换分栏', hint: '切换左右分栏模式（Alt+S）', group: '阅读', tags: ['split'] },
   { id: 'command:toggleZen', title: '切换禅模式', hint: '进入/退出禅模式（Alt+Z）', group: '阅读', tags: ['zen'] },
   { id: 'command:toggleOutline', title: '切换文档大纲', hint: '显示或隐藏文档大纲', group: '阅读', tags: ['outline'] },
-  { id: 'command:openCommandPalette', title: '打开命令面板', hint: '打开全局命令面板（Alt+K）', group: '系统', tags: ['command'] },
-  { id: 'command:showOnboarding', title: '查看新手引导', hint: '重新打开新手引导', group: '帮助', tags: ['help', 'onboarding'] },
+  { id: 'command:openCommandPalette', title: '打开全局入口', hint: '搜索命令、文件、正文和标签（Ctrl/Cmd+K 或 Alt+F）', group: '系统', tags: ['command', 'search'] },
   ...THEME_OPTIONS.map((item) => ({
     id: `theme:${item.id}`,
     title: `切换主题：${item.title}`,
@@ -423,20 +522,16 @@ function handleCommandExecute(command) {
     showImportModal.value = true
   } else if (id === 'command:duplicate' && currentFile.value) {
     handleDuplicateFile(currentFile.value.id)
-  } else if (id === 'command:globalSearch') {
-    showGlobalSearch.value = true
   } else if (id === 'command:togglePreview') {
-    togglePreviewMode()
+    handleTogglePreviewMode()
   } else if (id === 'command:toggleSplit') {
-    toggleFullscreenPreview()
+    handleToggleSplitMode()
   } else if (id === 'command:toggleZen') {
     handleToggleZenMode()
   } else if (id === 'command:toggleOutline') {
     handleToggleOutline()
   } else if (id === 'command:openCommandPalette') {
     showCommandPalette.value = true
-  } else if (id === 'command:showOnboarding') {
-    handleOpenOnboarding()
   } else if (id.startsWith('theme:')) {
     const nextTheme = id.replace('theme:', '')
     setTheme(nextTheme)
@@ -445,9 +540,9 @@ function handleCommandExecute(command) {
   handleCloseCommandPalette()
 }
 
-function handleOnboardingComplete() {
-  showOnboarding.value = false
-  localStorage.setItem(ONBOARDING_KEY, '1')
+function handleCommandPaletteOpenFile({ fileId, lineIndex, query }) {
+  openFileAt(fileId, lineIndex, query)
+  showCommandPalette.value = false
 }
 
 const togglePreviewMode = () => {
@@ -467,6 +562,25 @@ const toggleFullscreenPreview = () => {
   if (!isFullscreenPreview.value) {
     isZenMode.value = false
   }
+}
+
+function handleTogglePreviewMode() {
+  if (!isPreviewMode.value) {
+    togglePreviewMode()
+    toggleFullscreenPreview()
+  } else {
+    exitPreviewMode()
+  }
+}
+
+function handleToggleSplitMode() {
+  if (!isPreviewMode.value) {
+    isPreviewMode.value = true
+    isFullscreenPreview.value = false
+    isZenMode.value = false
+    return
+  }
+  toggleFullscreenPreview()
 }
 
 const exitPreviewMode = () => {
@@ -530,18 +644,17 @@ const handleSave = () => {
 
 useKeyboardShortcuts({
   onSave: handleSave,
+  onTogglePreviewMode: handleTogglePreviewMode,
+  onToggleSplitMode: handleToggleSplitMode,
   onToggleZenMode: handleToggleZenMode,
   onToggleOutline: handleToggleOutline,
   onToggleTheme: toggleTheme,
   onTogglePrevTheme: toggleThemePrevious,
   onOpenCommandPalette: handleOpenCommandPalette,
+  onRepeatSearch: handleRepeatSearch,
   onEscape: () => {
     if (showCommandPalette.value) {
       showCommandPalette.value = false
-      return
-    }
-    if (showOnboarding.value) {
-      showOnboarding.value = false
       return
     }
     if (isZenMode.value) {
@@ -553,23 +666,12 @@ useKeyboardShortcuts({
 import { onMounted } from 'vue'
 
 onMounted(() => {
-  document.addEventListener('keydown', (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'F') {
-      e.preventDefault()
-      showGlobalSearch.value = true
-    }
-  })
-
   window.addEventListener('file-delete', (e) => {
     handleDeleteFile(e.detail.fileId)
   })
 
   const validFileIds = fileSystem.files.value.filter(f => f.type === 'file').map(f => f.id)
   validateTabs(validFileIds)
-
-  if (!localStorage.getItem(ONBOARDING_KEY)) {
-    showOnboarding.value = true
-  }
 })
 </script>
 

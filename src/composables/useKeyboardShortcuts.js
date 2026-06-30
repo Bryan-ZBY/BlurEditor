@@ -1,8 +1,30 @@
 import { onMounted, onUnmounted } from 'vue'
 
 export function useKeyboardShortcuts(handlers) {
+  function isEditableTarget(target) {
+    if (!target) return false
+    const tagName = target.tagName?.toLowerCase()
+    return tagName === 'input' ||
+      tagName === 'textarea' ||
+      tagName === 'select' ||
+      target.isContentEditable
+  }
+
   function handleKeydown(e) {
     const isCtrl = e.ctrlKey || e.metaKey
+
+    if (
+      !isCtrl &&
+      !e.altKey &&
+      e.key.toLowerCase() === 'n' &&
+      !isEditableTarget(e.target)
+    ) {
+      const handled = handlers.onRepeatSearch?.(e.shiftKey ? -1 : 1)
+      if (handled) {
+        e.preventDefault()
+        return
+      }
+    }
 
     if (isCtrl && e.key === 's') {
       e.preventDefault()
@@ -34,6 +56,12 @@ export function useKeyboardShortcuts(handlers) {
       return
     }
 
+    if (isCtrl && !e.shiftKey && e.key.toLowerCase() === 'k') {
+      e.preventDefault()
+      handlers.onOpenCommandPalette?.()
+      return
+    }
+
     if (isCtrl && e.key === 'p') {
       e.preventDefault()
       handlers.onTogglePreview?.()
@@ -52,6 +80,18 @@ export function useKeyboardShortcuts(handlers) {
       return
     }
 
+    if (!isCtrl && e.altKey && e.key.toLowerCase() === 'v') {
+      e.preventDefault()
+      handlers.onTogglePreviewMode?.()
+      return
+    }
+
+    if (!isCtrl && e.altKey && e.key.toLowerCase() === 's') {
+      e.preventDefault()
+      handlers.onToggleSplitMode?.()
+      return
+    }
+
     if (!isCtrl && e.altKey && e.key.toLowerCase() === 'l') {
       e.preventDefault()
       handlers.onTogglePrevTheme?.()
@@ -64,7 +104,7 @@ export function useKeyboardShortcuts(handlers) {
       return
     }
 
-    if (!isCtrl && e.altKey && e.key.toLowerCase() === 'k') {
+    if (!isCtrl && e.altKey && e.key.toLowerCase() === 'f') {
       e.preventDefault()
       handlers.onOpenCommandPalette?.()
       return
