@@ -1,6 +1,6 @@
 <template>
   <Transition name="overlay">
-    <div v-if="visible" class="import-overlay" @click.self="$emit('close')">
+    <div v-if="visible" class="import-overlay" @click.self="handleClose">
       <Transition name="modal-scale">
         <div v-if="visible" class="import-modal" :class="{ 'is-dark': isDark }">
           <div class="modal-header">
@@ -12,7 +12,7 @@
               </div>
               <h3>导入文件</h3>
             </div>
-            <button class="close-btn" @click="$emit('close')" title="关闭">
+            <button class="close-btn" @click="handleClose" title="关闭">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
               </svg>
@@ -20,7 +20,79 @@
           </div>
 
           <div class="modal-body">
+            <div v-if="importError" class="import-error">
+              {{ importError }}
+            </div>
+
+            <div v-if="pendingWorkspace" class="workspace-preview">
+              <div class="workspace-title-row">
+                <div>
+                  <p class="workspace-kicker">工作区备份</p>
+                  <h4>{{ pendingWorkspaceName }}</h4>
+                </div>
+                <span class="workspace-version">v{{ workspaceSummary.version || 1 }}</span>
+              </div>
+
+              <div class="workspace-meta">
+                <span>{{ formatDate(workspaceSummary.exportedAt) }}</span>
+                <span>{{ workspaceSummary.sortMode }}</span>
+                <span>{{ workspaceSummary.includeArchived ? '含归档' : '不含归档' }}</span>
+              </div>
+
+              <div class="workspace-stats">
+                <div class="workspace-stat">
+                  <strong>{{ workspaceSummary.fileCount || 0 }}</strong>
+                  <span>文档</span>
+                </div>
+                <div class="workspace-stat">
+                  <strong>{{ workspaceSummary.folderCount || 0 }}</strong>
+                  <span>文件夹</span>
+                </div>
+                <div class="workspace-stat">
+                  <strong>{{ workspaceSummary.archivedCount || 0 }}</strong>
+                  <span>归档</span>
+                </div>
+                <div class="workspace-stat">
+                  <strong>{{ formatNumber(workspaceSummary.totalCharacters || 0) }}</strong>
+                  <span>字符</span>
+                </div>
+              </div>
+
+              <div v-if="workspaceSummary.warnings?.length" class="workspace-warnings">
+                <div v-for="warning in workspaceSummary.warnings" :key="warning" class="workspace-warning">
+                  {{ warning }}
+                </div>
+              </div>
+
+              <div class="import-mode">
+                <button
+                  class="mode-option"
+                  :class="{ active: importMode === 'replace' }"
+                  @click="importMode = 'replace'"
+                >
+                  <span>替换</span>
+                  <small>先备份当前工作区，再恢复此备份</small>
+                </button>
+                <button
+                  class="mode-option"
+                  :class="{ active: importMode === 'merge' }"
+                  @click="importMode = 'merge'"
+                >
+                  <span>合并</span>
+                  <small>追加到当前工作区，重名自动改名</small>
+                </button>
+              </div>
+
+              <div class="workspace-actions">
+                <button class="secondary-btn" @click="clearWorkspaceDraft">取消</button>
+                <button class="primary-btn" @click="confirmWorkspaceImport">
+                  {{ importMode === 'replace' ? '恢复工作区' : '合并工作区' }}
+                </button>
+              </div>
+            </div>
+
             <div
+              v-else
               class="drop-zone"
               :class="{ 'is-dragging': isDragging, 'has-hover': !isDragging }"
               @dragover.prevent="isDragging = true"
@@ -35,13 +107,14 @@
                 <div class="drop-icon-glow"></div>
               </div>
               <p class="drop-title">点击或拖拽文件到此处</p>
-              <span class="drop-subtitle">支持 Markdown、纯文本、HTML 格式</span>
+              <span class="drop-subtitle">支持 Markdown、纯文本、HTML、工作区 JSON 格式</span>
               <div class="file-types">
                 <span class="file-badge">.md</span>
                 <span class="file-badge">.txt</span>
                 <span class="file-badge">.html</span>
+                <span class="file-badge">.json</span>
               </div>
-              <input ref="fileInputRef" type="file" class="file-input" multiple accept=".md,.txt,.html" @change="handleFileSelect" />
+              <input ref="fileInputRef" type="file" class="file-input" multiple accept=".md,.txt,.html,.json,application/json" @change="handleFileSelect" />
             </div>
           </div>
         </div>
@@ -51,8 +124,11 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { readFileContent, getFileName } from '../utils/fileParser.js'
+import { getWorkspaceSummary, parseWorkspaceContent } from '../composables/useFileSystem.js'
+
+const LARGE_FILE_WARNING_BYTES = 5 * 1024 * 1024
 
 const props = defineProps({
   visible: Boolean,
@@ -63,9 +139,57 @@ const emit = defineEmits(['close', 'import'])
 
 const fileInputRef = ref(null)
 const isDragging = ref(false)
+const importError = ref('')
+const importMode = ref('replace')
+const pendingWorkspace = ref(null)
+const pendingWorkspaceName = ref('')
+const workspaceSummary = computed(() => (
+  pendingWorkspace.value ? getWorkspaceSummary(pendingWorkspace.value) : {}
+))
 
 function triggerFileInput() {
   fileInputRef.value?.click()
+}
+
+function resetState() {
+  isDragging.value = false
+  importError.value = ''
+  importMode.value = 'replace'
+  pendingWorkspace.value = null
+  pendingWorkspaceName.value = ''
+}
+
+function handleClose() {
+  resetState()
+  emit('close')
+}
+
+function clearWorkspaceDraft() {
+  resetState()
+}
+
+function confirmWorkspaceImport() {
+  if (!pendingWorkspace.value) return
+  emit('import', {
+    type: 'workspace',
+    workspace: pendingWorkspace.value,
+    mode: importMode.value
+  })
+}
+
+function formatDate(timestamp) {
+  if (!timestamp) return '未知时间'
+  return new Date(timestamp).toLocaleString()
+}
+
+function formatNumber(value) {
+  return new Intl.NumberFormat().format(value)
+}
+
+function shouldReadLargeFile(file) {
+  if (!file?.size || file.size <= LARGE_FILE_WARNING_BYTES) return true
+  const size = (file.size / 1024 / 1024).toFixed(1)
+  return window.confirm(`${file.name} 有 ${size} MB，导入时可能需要一些时间，是否继续？`)
 }
 
 function handleFileSelect(e) {
@@ -82,10 +206,27 @@ function handleDrop(e) {
 
 async function importFiles(fileList) {
   const results = []
+  importError.value = ''
+  clearWorkspaceDraft()
   
   for (const file of fileList) {
+    if (!shouldReadLargeFile(file)) continue
+
     try {
       const content = await readFileContent(file)
+      const workspace = parseWorkspaceContent(content)
+
+      if (workspace) {
+        pendingWorkspace.value = workspace
+        pendingWorkspaceName.value = file.name
+        return
+      }
+
+      if (/\.json$/i.test(file.name)) {
+        importError.value = `${file.name} 不是有效的 BlurEditor 工作区备份。`
+        continue
+      }
+
       results.push({
         name: getFileName(file),
         content
@@ -99,6 +240,10 @@ async function importFiles(fileList) {
     emit('import', results)
   }
 }
+
+watch(() => props.visible, (visible) => {
+  if (!visible) resetState()
+})
 </script>
 
 <style scoped>
@@ -227,6 +372,205 @@ async function importFiles(fileList) {
 /* 主体 */
 .modal-body {
   padding: 1.25rem;
+}
+
+.import-error {
+  margin-bottom: 0.875rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(239, 68, 68, 0.24);
+  color: #b91c1c;
+  background: rgba(254, 226, 226, 0.72);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+.import-modal.is-dark .import-error {
+  color: #fecaca;
+  background: rgba(127, 29, 29, 0.24);
+  border-color: rgba(248, 113, 113, 0.24);
+}
+
+.workspace-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.workspace-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.workspace-kicker {
+  margin: 0 0 0.2rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--accent-indigo, #6366f1);
+  text-transform: uppercase;
+}
+
+.workspace-title-row h4 {
+  margin: 0;
+  max-width: 22rem;
+  color: var(--modal-text, #1e293b);
+  font-size: 1rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.workspace-version {
+  flex-shrink: 0;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--modal-border, #e2e8f0);
+  color: var(--modal-muted, #64748b);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.workspace-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.workspace-meta span {
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.5rem;
+  background: var(--modal-hover, #f1f5f9);
+  color: var(--modal-muted, #64748b);
+  font-size: 0.75rem;
+  line-height: 1.2;
+}
+
+.workspace-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.workspace-stat {
+  min-width: 0;
+  padding: 0.625rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--modal-border, #e2e8f0);
+  background: color-mix(in srgb, var(--modal-bg, #fff) 90%, var(--accent-indigo, #6366f1) 10%);
+}
+
+.workspace-stat strong,
+.workspace-stat span {
+  display: block;
+}
+
+.workspace-stat strong {
+  color: var(--modal-text, #1e293b);
+  font-size: 0.95rem;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.workspace-stat span {
+  margin-top: 0.25rem;
+  color: var(--modal-muted, #64748b);
+  font-size: 0.72rem;
+}
+
+.workspace-warnings {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.workspace-warning {
+  padding: 0.5rem 0.625rem;
+  border-radius: 0.5rem;
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  background: rgba(254, 243, 199, 0.7);
+  color: #92400e;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.import-modal.is-dark .workspace-warning {
+  color: #fde68a;
+  background: rgba(120, 53, 15, 0.24);
+  border-color: rgba(251, 191, 36, 0.24);
+}
+
+.import-mode {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.625rem;
+}
+
+.mode-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--modal-border, #e2e8f0);
+  background: var(--modal-bg, #fff);
+  color: var(--modal-text, #1e293b);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.mode-option span {
+  font-weight: 700;
+}
+
+.mode-option small {
+  color: var(--modal-muted, #64748b);
+  font-size: 0.74rem;
+  line-height: 1.35;
+}
+
+.mode-option.active {
+  border-color: var(--accent-indigo, #6366f1);
+  background: color-mix(in srgb, var(--modal-bg, #fff) 84%, var(--accent-indigo, #6366f1) 16%);
+  box-shadow: 0 0 0 3px var(--accent-glow, rgba(99, 102, 241, 0.14));
+}
+
+.workspace-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.625rem;
+}
+
+.secondary-btn,
+.primary-btn {
+  min-height: 2.25rem;
+  padding: 0 0.875rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.secondary-btn {
+  border: 1px solid var(--modal-border, #e2e8f0);
+  background: transparent;
+  color: var(--modal-muted, #64748b);
+}
+
+.primary-btn {
+  border: 1px solid transparent;
+  background: var(--accent-indigo, #6366f1);
+  color: #fff;
+  box-shadow: 0 8px 18px var(--accent-glow, rgba(99, 102, 241, 0.25));
+}
+
+.secondary-btn:hover,
+.primary-btn:hover {
+  transform: translateY(-1px);
 }
 
 /* 拖拽区域 */
@@ -366,6 +710,22 @@ async function importFiles(fileList) {
 
 .file-input {
   display: none;
+}
+
+@media (max-width: 560px) {
+  .workspace-stats,
+  .import-mode {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .workspace-actions {
+    flex-direction: column-reverse;
+  }
+
+  .secondary-btn,
+  .primary-btn {
+    width: 100%;
+  }
 }
 
 @keyframes bounceSoft {

@@ -76,6 +76,7 @@
           @toggleTheme="toggleTheme"
           @tabChange="handleTabChange"
           @renameFile="handleRenameFile"
+          @exportWorkspace="handleExportWorkspace"
           ref="editorComponent"
         />
 
@@ -143,7 +144,7 @@ import Editor from './components/Editor.vue'
 import FileManager from './components/FileManager.vue'
 import ImportModal from './components/ImportModal.vue'
 import CommandPalette from './components/CommandPalette.vue'
-import { useFileSystem } from './composables/useFileSystem.js'
+import { useFileSystem, parseWorkspaceContent } from './composables/useFileSystem.js'
 import { useTheme } from './composables/useTheme.js'
 import { useTabs } from './composables/useTabs.js'
 import { useKeyboardShortcuts } from './composables/useKeyboardShortcuts.js'
@@ -348,6 +349,10 @@ function handleExportFile(fileId) {
   fileSystem.exportFile(fileId)
 }
 
+function handleExportWorkspace() {
+  fileSystem.exportWorkspace({ includeArchived: true })
+}
+
 function handleMoveFile({ fileId, newParentId }) {
   const moved = fileSystem.moveFile(fileId, newParentId)
   if (!moved) {
@@ -523,7 +528,37 @@ function openFileAt(fileId, lineIndex = null, searchQuery = '', options = {}) {
   }
 }
 
-function handleImport(files) {
+function finishWorkspaceImport(result) {
+  if (!result?.ok) {
+    const message = result?.error === 'backup_failed'
+      ? '导入前备份创建失败，已取消导入。请先导出工作区备份后再试。'
+      : '工作区文件格式无效，未导入。'
+    window.alert(message)
+    return
+  }
+
+  showImportModal.value = false
+  const validFileIds = result.files.filter((file) => file.type === 'file').map((file) => file.id)
+  validateTabs(validFileIds)
+  syncDisplayModeForFile(result.currentFileId)
+}
+
+function handleImport(payload) {
+  if (payload?.type === 'workspace') {
+    finishWorkspaceImport(fileSystem.importWorkspace(payload.workspace, { mode: payload.mode }))
+    return
+  }
+
+  const files = Array.isArray(payload) ? payload : []
+  const workspaceMatch = files
+    .map((file) => ({ file, workspace: parseWorkspaceContent(file.content) }))
+    .find((item) => item.workspace)
+
+  if (workspaceMatch) {
+    finishWorkspaceImport(fileSystem.importWorkspace(workspaceMatch.workspace, { mode: 'replace' }))
+    return
+  }
+
   let firstNewFile = null
   files.forEach((file, index) => {
     const newFile = fileSystem.createFile(null, file.name, file.content)
@@ -537,10 +572,34 @@ function handleImport(files) {
     syncDisplayModeForFile(firstNewFile.id)
   }
 }
+
+function handleRestoreImportBackup() {
+  const backup = fileSystem.importBackupInfo.value
+  if (!backup) {
+    window.alert('没有可恢复的导入前备份。')
+    return
+  }
+
+  const date = backup.createdAt ? new Date(backup.createdAt).toLocaleString() : '未知时间'
+  const count = backup.summary?.totalCount || 0
+  const shouldRestore = window.confirm(`恢复 ${date} 的导入前备份（${count} 个项目）？当前工作区会被替换。`)
+  if (!shouldRestore) return
+
+  finishWorkspaceImport(fileSystem.restoreImportBackup())
+}
+
 const commandPaletteCommands = computed(() => [
   { id: 'command:newFile', title: '新建文件', hint: '创建 Markdown 文件', group: '文件', tags: ['new', 'file'] },
   { id: 'command:newFolder', title: '新建文件夹', hint: '创建一个新文件夹', group: '文件', tags: ['new', 'folder'] },
   { id: 'command:import', title: '导入文件', hint: '从本地导入 Markdown 文件', group: '文件', tags: ['import', 'file'] },
+  { id: 'command:exportWorkspace', title: '导出工作区备份', hint: '导出完整 BlurEditor 工作区 JSON', group: '文件', tags: ['export', 'backup', 'workspace'] },
+  ...(fileSystem.importBackupInfo.value ? [{
+    id: 'command:restoreImportBackup',
+    title: '恢复导入前备份',
+    hint: '回滚到最近一次导入前的工作区',
+    group: '文件',
+    tags: ['restore', 'backup', 'import']
+  }] : []),
   { id: 'command:duplicate', title: '复制当前文件', hint: '复制当前文件到当前目录', group: '文件', tags: ['copy', 'file'] },
   { id: 'command:togglePreview', title: '切换编辑/预览', hint: '切换编辑与预览模式（Alt+V）', group: '阅读', tags: ['preview'] },
   { id: 'command:toggleSplit', title: '切换分栏', hint: '切换左右分栏模式（Alt+S）', group: '阅读', tags: ['split'] },
@@ -575,6 +634,10 @@ function handleCommandExecute(command) {
     handleCreateFolderAtRoot()
   } else if (id === 'command:import') {
     showImportModal.value = true
+  } else if (id === 'command:exportWorkspace') {
+    handleExportWorkspace()
+  } else if (id === 'command:restoreImportBackup') {
+    handleRestoreImportBackup()
   } else if (id === 'command:duplicate' && currentFile.value) {
     handleDuplicateFile(currentFile.value.id)
   } else if (id === 'command:togglePreview') {

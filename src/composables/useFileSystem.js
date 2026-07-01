@@ -3,28 +3,250 @@ import { computed, ref } from 'vue'
 const STORAGE_KEY = 'file_system_v1'
 const CURRENT_FILE_KEY = 'current_file_id'
 const SORT_MODE_KEY = 'file_sort_mode'
+const IMPORT_BACKUP_KEY = 'file_system_backup_before_import_v1'
 const MAX_RECENT_FILES = 12
+const WORKSPACE_SCHEMA = 'blureditor-workspace'
+const WORKSPACE_VERSION = 1
+const WORKSPACE_APP = 'blureditor'
+const VALID_SORT_MODES = new Set(['name', 'date', 'size', 'manual'])
 
 function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).substring(2, 9)
 }
 
+function toTimestamp(value, fallback) {
+  const timestamp = Number(value)
+  return Number.isFinite(timestamp) ? timestamp : fallback
+}
+
 function normalizeFile(file, now = Date.now()) {
   if (!file || typeof file !== 'object') return null
+  const type = file.type === 'folder' ? 'folder' : 'file'
   return {
     id: file.id || generateId(),
     name: file.name || 'untitled.md',
-    type: file.type || 'file',
+    type,
     parentId: file.parentId ?? null,
-    content: file.content || '',
+    content: type === 'folder' ? '' : String(file.content || ''),
     tags: Array.isArray(file.tags) ? file.tags : [],
     isArchived: Boolean(file.isArchived),
     isFavorite: Boolean(file.isFavorite),
-    createdAt: Number.isFinite(file.createdAt) ? file.createdAt : now,
-    updatedAt: Number.isFinite(file.updatedAt) ? file.updatedAt : now,
-    lastOpenedAt: Number.isFinite(file.lastOpenedAt) ? file.lastOpenedAt : now,
-    order: Number.isFinite(file.order) ? file.order : now
+    createdAt: toTimestamp(file.createdAt, now),
+    updatedAt: toTimestamp(file.updatedAt, now),
+    lastOpenedAt: toTimestamp(file.lastOpenedAt, now),
+    order: toTimestamp(file.order, now)
   }
+}
+
+function isWorkspaceData(data) {
+  return Boolean(
+    data &&
+    typeof data === 'object' &&
+    data.schema === WORKSPACE_SCHEMA &&
+    Array.isArray(data.files)
+  )
+}
+
+export function parseWorkspaceContent(content) {
+  if (typeof content !== 'string') return null
+  const text = content.trim()
+  if (!text.startsWith('{') || !text.includes(WORKSPACE_SCHEMA)) return null
+
+  try {
+    const data = JSON.parse(text)
+    return isWorkspaceData(data) ? data : null
+  } catch (e) {
+    return null
+  }
+}
+
+function normalizeSortMode(mode) {
+  return VALID_SORT_MODES.has(mode) ? mode : 'name'
+}
+
+function cloneFileForWorkspace(file) {
+  return {
+    id: file.id,
+    name: file.name,
+    type: file.type === 'folder' ? 'folder' : 'file',
+    parentId: file.parentId ?? null,
+    content: file.type === 'folder' ? '' : String(file.content || ''),
+    tags: Array.isArray(file.tags) ? [...file.tags] : [],
+    isArchived: Boolean(file.isArchived),
+    isFavorite: Boolean(file.isFavorite),
+    createdAt: toTimestamp(file.createdAt, Date.now()),
+    updatedAt: toTimestamp(file.updatedAt, Date.now()),
+    lastOpenedAt: toTimestamp(file.lastOpenedAt, Date.now()),
+    order: toTimestamp(file.order, Date.now())
+  }
+}
+
+function createWorkspaceData(fileList, selectedFileId, selectedSortMode, options = {}) {
+  const includeArchived = options.includeArchived !== false
+  const files = (Array.isArray(fileList) ? fileList : [])
+    .filter((file) => includeArchived || !file.isArchived)
+    .map(cloneFileForWorkspace)
+
+  const exportedIds = new Set(files.map((file) => file.id))
+  files.forEach((file) => {
+    if (file.parentId && !exportedIds.has(file.parentId)) {
+      file.parentId = null
+    }
+  })
+
+  const currentFile = files.find((file) => file.id === selectedFileId && file.type === 'file')
+    || files.find((file) => file.type === 'file' && !file.isArchived)
+    || files.find((file) => file.type === 'file')
+
+  return {
+    schema: WORKSPACE_SCHEMA,
+    version: WORKSPACE_VERSION,
+    app: WORKSPACE_APP,
+    exportedAt: Date.now(),
+    includeArchived,
+    sortMode: normalizeSortMode(selectedSortMode),
+    currentFileId: currentFile?.id || null,
+    files
+  }
+}
+
+export function getWorkspaceSummary(workspace) {
+  if (!isWorkspaceData(workspace)) {
+    return {
+      valid: false,
+      compatible: false,
+      warnings: ['这不是 BlurEditor 工作区文件']
+    }
+  }
+
+  const rawFiles = Array.isArray(workspace.files) ? workspace.files : []
+  const ids = new Set(rawFiles.map((file) => file?.id).filter(Boolean))
+  const invalidParentCount = rawFiles.filter((file) =>
+    file?.parentId && (!ids.has(file.parentId) || file.parentId === file.id)
+  ).length
+  const fileCount = rawFiles.filter((file) => file?.type !== 'folder').length
+  const folderCount = rawFiles.filter((file) => file?.type === 'folder').length
+  const archivedCount = rawFiles.filter((file) => file?.isArchived).length
+  const favoriteCount = rawFiles.filter((file) => file?.isFavorite).length
+  const totalCharacters = rawFiles.reduce((total, file) => (
+    file?.type === 'folder' ? total : total + String(file?.content || '').length
+  ), 0)
+  const version = Number(workspace.version) || 0
+  const compatible = version <= WORKSPACE_VERSION
+  const warnings = []
+
+  if (!compatible) warnings.push(`工作区版本 v${version} 高于当前支持的 v${WORKSPACE_VERSION}，将尝试兼容导入`)
+  if (invalidParentCount > 0) warnings.push(`${invalidParentCount} 个项目的父级无效，导入时会移动到根目录`)
+  if (fileCount === 0) warnings.push('工作区里没有可打开的文档')
+
+  return {
+    valid: true,
+    compatible,
+    schema: workspace.schema,
+    version,
+    app: workspace.app || WORKSPACE_APP,
+    exportedAt: Number(workspace.exportedAt) || null,
+    includeArchived: Boolean(workspace.includeArchived),
+    sortMode: normalizeSortMode(workspace.sortMode),
+    totalCount: rawFiles.length,
+    fileCount,
+    folderCount,
+    archivedCount,
+    favoriteCount,
+    invalidParentCount,
+    totalCharacters,
+    warnings
+  }
+}
+
+function normalizeWorkspaceData(workspace) {
+  if (!isWorkspaceData(workspace)) return null
+
+  const now = Date.now()
+  const usedIds = new Set()
+  const files = workspace.files
+    .map((file) => normalizeFile(file, now))
+    .filter(Boolean)
+    .map((file) => {
+      if (!file.id || usedIds.has(file.id)) {
+        file.id = generateId()
+      }
+      usedIds.add(file.id)
+      return file
+    })
+
+  if (!files.some((file) => file.type === 'file')) return null
+
+  const byId = new Map(files.map((file) => [file.id, file]))
+  files.forEach((file) => {
+    if (file.parentId && (!byId.has(file.parentId) || file.parentId === file.id)) {
+      file.parentId = null
+    }
+  })
+
+  files.forEach((file) => {
+    const seen = new Set([file.id])
+    let cursor = file.parentId
+    while (cursor) {
+      if (seen.has(cursor)) {
+        file.parentId = null
+        break
+      }
+      seen.add(cursor)
+      cursor = byId.get(cursor)?.parentId || null
+    }
+  })
+
+  const requestedCurrentFile = files.find(
+    (file) => file.id === workspace.currentFileId && file.type === 'file' && !file.isArchived
+  )
+  const firstFile = files.find((file) => file.type === 'file' && !file.isArchived)
+    || files.find((file) => file.type === 'file')
+
+  return {
+    files,
+    currentFileId: requestedCurrentFile?.id || firstFile?.id || null,
+    sortMode: normalizeSortMode(workspace.sortMode)
+  }
+}
+
+function buildImportBackupInfo(backup) {
+  if (!backup?.workspace) return null
+  const summary = getWorkspaceSummary(backup.workspace)
+  return {
+    createdAt: Number(backup.createdAt) || null,
+    reason: backup.reason || 'import',
+    summary
+  }
+}
+
+function loadImportBackup() {
+  try {
+    const raw = localStorage.getItem(IMPORT_BACKUP_KEY)
+    if (!raw) return null
+    const backup = JSON.parse(raw)
+    return backup?.workspace ? backup : null
+  } catch (e) {
+    console.error('Failed to load import backup:', e)
+  }
+  return null
+}
+
+function getStoredImportBackupInfo() {
+  return buildImportBackupInfo(loadImportBackup())
+}
+
+function findAccidentallyImportedWorkspace(files) {
+  if (!Array.isArray(files)) return null
+  for (const file of files) {
+    const name = String(file?.name || '').toLowerCase()
+    const mightBeWorkspaceFile = name.includes('blur-editor-workspace') || name.endsWith('.json')
+    if (!mightBeWorkspaceFile) continue
+
+    const workspace = parseWorkspaceContent(file?.content)
+    if (workspace) return workspace
+  }
+  return null
 }
 
 function createDefaultFiles() {
@@ -57,6 +279,18 @@ function loadFromStorage() {
     const data = JSON.parse(raw)
     if (!data || !Array.isArray(data.files)) return null
 
+    const importedWorkspace = findAccidentallyImportedWorkspace(data.files)
+    if (importedWorkspace) {
+      const restored = normalizeWorkspaceData(importedWorkspace)
+      if (restored) {
+        saveToStorage(restored.files, restored.currentFileId)
+        if (restored.sortMode) {
+          localStorage.setItem(SORT_MODE_KEY, restored.sortMode)
+        }
+        return restored
+      }
+    }
+
     const now = Date.now()
     const files = data.files
       .map((file) => normalizeFile(file, now))
@@ -82,7 +316,7 @@ function saveToStorage(files, currentFileId) {
   }
 }
 
-const sortMode = ref(localStorage.getItem(SORT_MODE_KEY) || 'name')
+const sortMode = ref(normalizeSortMode(localStorage.getItem(SORT_MODE_KEY)))
 
 export function useFileSystem() {
   const saved = loadFromStorage()
@@ -90,7 +324,13 @@ export function useFileSystem() {
 
   const files = ref(saved?.files || defaultData.files)
   const currentFileId = ref(saved?.currentFileId || defaultData.currentFileId)
+  const importBackupInfo = ref(getStoredImportBackupInfo())
   const now = Date.now()
+
+  if (saved?.sortMode) {
+    sortMode.value = saved.sortMode
+    localStorage.setItem(SORT_MODE_KEY, saved.sortMode)
+  }
 
   if (!currentFileId.value || !files.value.some((f) => f.id === currentFileId.value && f.type === 'file')) {
     const firstFile = files.value.find((f) => f.type === 'file' && !f.isArchived)
@@ -134,6 +374,157 @@ export function useFileSystem() {
 
   function persist() {
     saveToStorage(files.value, currentFileId.value)
+  }
+
+  function backupCurrentWorkspace(reason = 'import') {
+    const workspace = createWorkspaceData(files.value, currentFileId.value, sortMode.value, { includeArchived: true })
+    const backup = {
+      createdAt: Date.now(),
+      reason,
+      workspace
+    }
+
+    try {
+      localStorage.setItem(IMPORT_BACKUP_KEY, JSON.stringify(backup))
+      importBackupInfo.value = buildImportBackupInfo(backup)
+      return true
+    } catch (e) {
+      console.error('Failed to create import backup:', e)
+      return false
+    }
+  }
+
+  function makeUniqueNameInList(fileList, parentId, name, type = 'file') {
+    const fallback = type === 'folder' ? '新建文件夹' : '新建文档.md'
+    const requestedName = String(name || fallback).trim() || fallback
+    const normalized = normalizeName(requestedName)
+    const hasName = (candidate) => fileList.some((file) =>
+      file.parentId === parentId &&
+      !file.isArchived &&
+      normalizeName(file.name) === normalizeName(candidate)
+    )
+
+    if (!normalized || !hasName(requestedName)) return requestedName
+
+    const lastDot = type === 'file' ? requestedName.lastIndexOf('.') : -1
+    const baseName = lastDot > 0 ? requestedName.slice(0, lastDot) : requestedName
+    const ext = type === 'file' ? (lastDot > 0 ? requestedName.slice(lastDot) : '.md') : ''
+    let counter = 1
+    let candidate = ''
+
+    do {
+      candidate = type === 'folder'
+        ? `${requestedName}${counter}`
+        : `${baseName}${counter}${ext}`
+      counter += 1
+    } while (hasName(candidate))
+
+    return candidate
+  }
+
+  function mergeWorkspace(restored) {
+    const idMap = new Map()
+    restored.files.forEach((file) => {
+      idMap.set(file.id, generateId())
+    })
+
+    const nextFiles = [...files.value]
+    const importedFiles = restored.files.map((file) => {
+      const imported = {
+        ...file,
+        id: idMap.get(file.id),
+        parentId: file.parentId ? idMap.get(file.parentId) || null : null,
+        tags: Array.isArray(file.tags) ? [...file.tags] : [],
+        createdAt: toTimestamp(file.createdAt, Date.now()),
+        updatedAt: Date.now(),
+        lastOpenedAt: Date.now(),
+        order: Date.now() + nextFiles.length
+      }
+
+      imported.name = makeUniqueNameInList(nextFiles, imported.parentId, imported.name, imported.type)
+      nextFiles.push(imported)
+      return imported
+    })
+
+    const importedCurrentId = idMap.get(restored.currentFileId)
+    const currentImportedFile = importedFiles.find((file) => file.id === importedCurrentId && file.type === 'file')
+      || importedFiles.find((file) => file.type === 'file' && !file.isArchived)
+      || importedFiles.find((file) => file.type === 'file')
+
+    files.value = nextFiles
+    currentFileId.value = currentImportedFile?.id || currentFileId.value
+    persist()
+
+    return {
+      files: files.value,
+      currentFileId: currentFileId.value,
+      sortMode: sortMode.value,
+      importedCount: importedFiles.length
+    }
+  }
+
+  function replaceWorkspace(restored) {
+    files.value = restored.files
+    currentFileId.value = restored.currentFileId
+    if (restored.sortMode) {
+      setSortMode(restored.sortMode)
+    }
+    persist()
+
+    return {
+      files: files.value,
+      currentFileId: currentFileId.value,
+      sortMode: sortMode.value,
+      importedCount: restored.files.length
+    }
+  }
+
+  function importWorkspace(workspace, options = {}) {
+    const restored = normalizeWorkspaceData(workspace)
+    if (!restored) return { ok: false, error: 'invalid_workspace' }
+
+    const mode = options.mode === 'merge' ? 'merge' : 'replace'
+    const backupCreated = backupCurrentWorkspace(mode === 'merge' ? 'merge-import' : 'replace-import')
+    if (!backupCreated) return { ok: false, error: 'backup_failed' }
+
+    const result = mode === 'merge'
+      ? mergeWorkspace(restored)
+      : replaceWorkspace(restored)
+
+    return {
+      ok: true,
+      mode,
+      backupCreated,
+      ...result
+    }
+  }
+
+  function restoreImportBackup() {
+    const backup = loadImportBackup()
+    const restored = normalizeWorkspaceData(backup?.workspace)
+    if (!restored) return { ok: false, error: 'missing_backup' }
+
+    const result = replaceWorkspace(restored)
+    return {
+      ok: true,
+      mode: 'restore',
+      ...result
+    }
+  }
+
+  function exportWorkspace(options = {}) {
+    const workspace = createWorkspaceData(files.value, currentFileId.value, sortMode.value, {
+      includeArchived: options.includeArchived !== false
+    })
+    const date = new Date(workspace.exportedAt).toISOString().slice(0, 10)
+    const blob = new Blob([JSON.stringify(workspace, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `blur-editor-workspace-${date}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+    return workspace
   }
 
   function normalizeName(name) {
@@ -477,8 +868,9 @@ export function useFileSystem() {
   }
 
   function setSortMode(mode) {
-    sortMode.value = mode
-    localStorage.setItem(SORT_MODE_KEY, mode)
+    const nextMode = normalizeSortMode(mode)
+    sortMode.value = nextMode
+    localStorage.setItem(SORT_MODE_KEY, nextMode)
   }
 
   function getSortedFiles(fileList) {
@@ -521,8 +913,13 @@ export function useFileSystem() {
     favoriteFiles,
     recentFiles,
     sortMode,
+    importBackupInfo,
     getChildren,
     getSortedFiles,
+    importWorkspace,
+    restoreImportBackup,
+    exportWorkspace,
+    backupCurrentWorkspace,
     createFile,
     createFolder,
     hasDuplicateName,

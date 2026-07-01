@@ -82,6 +82,14 @@
                     </svg>
                     <span>导出富文本</span>
                   </div>
+                  <div class="export-divider"></div>
+                  <div class="export-item" @click="handleExport('workspace')">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M3.3 7L12 12l8.7-5M12 22V12"/>
+                    </svg>
+                    <span>导出工作区备份</span>
+                  </div>
                 </div>
               </Transition>
             </div>
@@ -303,6 +311,7 @@ const emit = defineEmits([
   'toggleTheme',
   'tabChange',
   'renameFile',
+  'exportWorkspace',
   'update:previewPageWidth',
   'update:previewPageCentered'
 ])
@@ -1024,6 +1033,9 @@ function handleExport(format) {
       copyAsRichText(props.content).then(() => {
         alert('已复制富文本到剪贴板')
       })
+      break
+    case 'workspace':
+      emit('exportWorkspace')
       break
   }
 }
