@@ -1,5 +1,5 @@
 <template>
-  <div class="editor-container" :class="{ 'is-dark': isDark, 'zen-mode': isZenMode && isPreviewMode && isFullscreenPreview }">
+  <div class="editor-container" :class="{ 'is-dark': isDark, 'zen-mode': isZenMode && isPreviewMode }">
     <!-- 标签页 -->
     <EditorTabs
       v-if="showTabs && !isZenMode"

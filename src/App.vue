@@ -172,7 +172,7 @@ const isPreviewMode = ref(false)
 const isFullscreenPreview = ref(false)
 const isZenMode = ref(false)
 const isZenModeActive = computed(
-  () => isZenMode.value && isPreviewMode.value && isFullscreenPreview.value
+  () => isZenMode.value && isPreviewMode.value
 )
 const splitPosition = ref(50)
 const isResizing = ref(false)
@@ -605,7 +605,7 @@ const commandPaletteCommands = computed(() => [
   { id: 'command:toggleSplit', title: '切换分栏', hint: '切换左右分栏模式（Alt+S）', group: '阅读', tags: ['split'] },
   { id: 'command:toggleZen', title: '切换禅模式', hint: '进入/退出禅模式（Alt+Z）', group: '阅读', tags: ['zen'] },
   { id: 'command:toggleOutline', title: '切换文档大纲', hint: '显示或隐藏文档大纲', group: '阅读', tags: ['outline'] },
-  { id: 'command:openCommandPalette', title: '打开全局入口', hint: '搜索命令、文件、正文和标签（Ctrl/Cmd+K 或 Alt+F）', group: '系统', tags: ['command', 'search'] },
+  { id: 'command:openCommandPalette', title: '打开全局入口', hint: '搜索命令、文件、正文和标签（Ctrl/Cmd+K 或 Alt+G）', group: '系统', tags: ['command', 'search'] },
   ...THEME_OPTIONS.map((item) => ({
     id: `theme:${item.id}`,
     title: `切换主题：${item.title}`,
@@ -698,6 +698,12 @@ function handleToggleSplitMode() {
     isZenMode.value = false
     return
   }
+
+  if (isZenMode.value) {
+    isFullscreenPreview.value = !isFullscreenPreview.value
+    return
+  }
+
   toggleFullscreenPreview()
 }
 

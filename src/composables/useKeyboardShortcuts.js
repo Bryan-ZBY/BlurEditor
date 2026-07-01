@@ -104,7 +104,7 @@ export function useKeyboardShortcuts(handlers) {
       return
     }
 
-    if (!isCtrl && e.altKey && e.key.toLowerCase() === 'f') {
+    if (!isCtrl && e.altKey && e.key.toLowerCase() === 'g') {
       e.preventDefault()
       handlers.onOpenCommandPalette?.()
       return
