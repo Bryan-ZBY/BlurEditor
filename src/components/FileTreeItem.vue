@@ -110,21 +110,26 @@
     <Transition name="tree">
       <div v-if="file.type === 'folder' && isExpanded" class="ft-children">
         <FileTreeItem
-          v-for="child in children"
+          v-for="(child, index) in children"
           :key="child.id"
           :file="child"
+          :index="index"
           :level="level + 1"
           :current-file-id="currentFileId"
           :expanded-ids="expandedIds"
           :is-dark="isDark"
           :get-children="getChildren"
           :get-sorted-files="getSortedFiles"
+          :root-files="rootFiles"
           @select="$emit('select', $event)"
           @toggle="$emit('toggle', $event)"
           @create-file="$emit('create-file', $event)"
           @create-folder="$emit('create-folder', $event)"
           @move="$emit('move', $event)"
+          @reorder="$emit('reorder', $event)"
           @rename="$emit('rename', $event)"
+          @archive="$emit('archive', $event)"
+          @duplicate="$emit('duplicate', $event)"
           @toggleFavorite="$emit('toggleFavorite', $event)"
         />
         <div
@@ -158,11 +163,15 @@
             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
             <span>移动到</span>
           </button>
+          <button v-if="contextFile?.type === 'file'" @click="handleAction('duplicate')" class="ft-context-item">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+            <span>复制</span>
+          </button>
           <template v-if="contextFile?.type === 'file'">
             <div class="ft-context-divider"></div>
             <button @click="handleAction('delete')" class="ft-context-item danger">
               <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-              <span>删除</span>
+              <span>移入回收站</span>
             </button>
           </template>
           <template v-else>
@@ -177,7 +186,7 @@
             <div class="ft-context-divider"></div>
             <button @click="handleAction('delete')" class="ft-context-item danger">
               <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-              <span>删除</span>
+              <span>移入回收站</span>
             </button>
           </template>
         </div>
@@ -188,7 +197,7 @@
     <ConfirmModal
       :visible="showDeleteConfirm"
       :is-dark="isDark"
-      title="确认删除"
+      title="移入回收站"
       :message="deleteConfirmMessage"
       icon-type="warning"
       @confirm="handleDeleteConfirm"
@@ -333,11 +342,24 @@ const props = defineProps({
   isDark: Boolean,
   getChildren: Function,
   getSortedFiles: Function,
-  rootFiles: Array
+  rootFiles: Array,
+  index: {
+    type: Number,
+    default: 0
+  }
 })
 
 const emit = defineEmits([
-  'select', 'toggle', 'create-file', 'create-folder', 'move', 'rename', 'toggleFavorite'
+  'select',
+  'toggle',
+  'create-file',
+  'create-folder',
+  'move',
+  'reorder',
+  'rename',
+  'archive',
+  'duplicate',
+  'toggleFavorite'
 ])
 
 const isCurrent = computed(() => props.file.id === props.currentFileId)
@@ -351,7 +373,7 @@ const children = computed(() => {
   return rawChildren
 })
 const deleteConfirmMessage = computed(() => {
-  return `确定要删除 "${deleteFile.value?.name || ''}" 吗？此操作无法撤销。`
+  return `确定要将 "${deleteFile.value?.name || ''}" 移入回收站吗？之后可以在回收站恢复。`
 })
 const allFolders = computed(() => {
   const folders = []
@@ -387,7 +409,7 @@ function showContextMenu(e, file) {
   contextFile.value = file
 
   const menuWidth = 170
-  const menuHeight = 220
+  const menuHeight = 270
   const windowWidth = window.innerWidth
   const windowHeight = window.innerHeight
 
@@ -435,6 +457,9 @@ function handleAction(action) {
       showMoveDialog.value = true
       selectedFolderId.value = file.parentId
       break
+    case 'duplicate':
+      emit('duplicate', file.id)
+      break
     case 'rename':
       startRename()
       break
@@ -454,7 +479,7 @@ function toggleFavorite() {
 function handleDeleteConfirm() {
   const file = deleteFile.value
   if (file) {
-    window.dispatchEvent(new CustomEvent('file-delete', { detail: { fileId: file.id } }))
+    emit('archive', file.id)
   }
   showDeleteConfirm.value = false
   deleteFile.value = null
@@ -540,11 +565,14 @@ function handleDrop(e) {
   isDraggingOver.value = false
   const draggedId = e.dataTransfer.getData('text/plain')
   if (draggedId && draggedId !== props.file.id) {
-    if (props.file.type === 'folder') {
-      emit('move', { fileId: draggedId, newParentId: props.file.id })
-    } else {
-      emit('move', { fileId: draggedId, newParentId: props.file.parentId })
-    }
+    const rowEl = e.currentTarget.querySelector(':scope > .ft-item')
+    const rect = rowEl?.getBoundingClientRect() || e.currentTarget.getBoundingClientRect()
+    const dropAfter = e.clientY > rect.top + rect.height / 2
+    emit('reorder', {
+      fileId: draggedId,
+      targetParentId: props.file.parentId,
+      targetIndex: props.index + (dropAfter ? 1 : 0)
+    })
   }
 }
 

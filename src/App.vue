@@ -16,6 +16,7 @@
           ref="fileManagerRef"
           :root-files="rootFiles"
           :archived-files="archivedFiles"
+          :recent-files="fileSystem.recentFiles.value"
           :files="fileSystem.files.value"
           :current-file-id="currentFileId"
           :get-children="getChildren"
@@ -29,9 +30,11 @@
           @rename-file="handleRenameFile"
           @archive-file="handleArchiveFile"
           @unarchive-file="handleUnarchiveFile"
+          @empty-trash="handleEmptyTrash"
           @duplicate-file="handleDuplicateFile"
           @export-file="handleExportFile"
           @move-file="handleMoveFile"
+          @reorder-file="handleReorderFile"
           @set-sort-mode="handleSetSortMode"
           @toggleFavorite="handleToggleFavorite"
           @open-import="showImportModal = true"
@@ -135,7 +138,7 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick } from 'vue'
+import { ref, computed, nextTick, onMounted } from 'vue'
 import Editor from './components/Editor.vue'
 import FileManager from './components/FileManager.vue'
 import ImportModal from './components/ImportModal.vue'
@@ -248,18 +251,27 @@ function getChildren(parentId) {
   return fileSystem.getChildren(parentId)
 }
 
+function syncDisplayModeForFile(fileId) {
+  const file = fileSystem.files.value.find((item) => item.id === fileId)
+  const hasContent = Boolean(String(file?.content || '').trim())
+
+  isPreviewMode.value = hasContent
+  isFullscreenPreview.value = hasContent
+  if (!hasContent) {
+    isZenMode.value = false
+  }
+}
+
 function handleSelectFile(fileId) {
   fileSystem.setCurrentFile(fileId)
-  isPreviewMode.value = true
-  isFullscreenPreview.value = true
+  syncDisplayModeForFile(fileId)
 }
 
 function handleCreateFile(parentId) {
   const newFile = fileSystem.createFile(parentId)
   if (newFile) {
     fileSystem.setCurrentFile(newFile.id)
-    isPreviewMode.value = true
-    isFullscreenPreview.value = true
+    syncDisplayModeForFile(newFile.id)
   }
 }
 
@@ -283,24 +295,52 @@ function handleDeleteFile(fileId) {
   const idsToClose = getDescendantFileIds(fileId)
   fileSystem.deleteFile(fileId)
   idsToClose.forEach(id => closeTab(id))
+  syncDisplayModeForFile(currentFileId.value)
 }
 
 function handleRenameFile({ fileId, newName }) {
-  fileSystem.renameFile(fileId, newName)
+  const renamed = fileSystem.renameFile(fileId, newName)
+  if (!renamed) {
+    window.alert('同一文件夹下已存在同名项目，请换一个名称。')
+  }
 }
 
 function handleArchiveFile(fileId) {
-  fileSystem.archiveFile(fileId)
+  const idsToClose = getDescendantFileIds(fileId)
+  const archived = fileSystem.archiveFile(fileId)
+  if (archived) {
+    idsToClose.forEach((id) => closeTab(id))
+    syncDisplayModeForFile(currentFileId.value)
+  }
 }
 
 function handleUnarchiveFile(fileId) {
-  fileSystem.unarchiveFile(fileId)
+  const file = fileSystem.files.value.find((f) => f.id === fileId)
+  const name = file?.name || '该项目'
+  if (window.confirm(`恢复「${name}」？`)) {
+    fileSystem.unarchiveFile(fileId)
+  }
+}
+
+function handleEmptyTrash() {
+  const archivedCount = fileSystem.archivedFiles.value.length
+  if (archivedCount === 0) return
+  if (!window.confirm(`确定清空回收站中的 ${archivedCount} 个项目吗？此操作无法撤销。`)) return
+
+  const idsToClose = new Set()
+  fileSystem.archivedFiles.value.forEach((file) => {
+    getDescendantFileIds(file.id).forEach((id) => idsToClose.add(id))
+  })
+  fileSystem.emptyTrash()
+  idsToClose.forEach((id) => closeTab(id))
+  syncDisplayModeForFile(currentFileId.value)
 }
 
 function handleDuplicateFile(fileId) {
   const newFile = fileSystem.duplicateFile(fileId)
   if (newFile) {
     fileSystem.setCurrentFile(newFile.id)
+    syncDisplayModeForFile(newFile.id)
   }
 }
 
@@ -309,7 +349,19 @@ function handleExportFile(fileId) {
 }
 
 function handleMoveFile({ fileId, newParentId }) {
-  fileSystem.moveFile(fileId, newParentId)
+  const moved = fileSystem.moveFile(fileId, newParentId)
+  if (!moved) {
+    window.alert('目标文件夹下已存在同名项目，或不能移动到该位置。')
+  }
+}
+
+function handleReorderFile(payload) {
+  const reordered = fileSystem.reorderFile(payload.fileId, payload.targetParentId, payload.targetIndex)
+  if (reordered) {
+    fileSystem.setSortMode('manual')
+    return
+  }
+  window.alert('无法排序到该位置：可能存在同名项目，或目标位置不可用。')
 }
 
 function handleToggleFavorite({ fileId }) {
@@ -332,6 +384,7 @@ function handleUpdateContent(content) {
 
 function handleTabChange(fileId) {
   fileSystem.setCurrentFile(fileId)
+  syncDisplayModeForFile(fileId)
   const parentIds = fileSystem.getParentFolderIds(fileId)
   if (parentIds.length > 0 && fileManagerRef.value) {
     fileManagerRef.value.expandToFile(fileId, parentIds)
@@ -430,6 +483,7 @@ function openFileAt(fileId, lineIndex = null, searchQuery = '', options = {}) {
   if (!fileId) return
 
   fileSystem.setCurrentFile(fileId)
+  syncDisplayModeForFile(fileId)
   const parentIds = fileSystem.getParentFolderIds(fileId)
   if (parentIds.length > 0 && fileManagerRef.value) {
     fileManagerRef.value.expandToFile(fileId, parentIds)
@@ -480,6 +534,7 @@ function handleImport(files) {
   showImportModal.value = false
   if (firstNewFile) {
     fileSystem.setCurrentFile(firstNewFile.id)
+    syncDisplayModeForFile(firstNewFile.id)
   }
 }
 const commandPaletteCommands = computed(() => [
@@ -663,15 +718,10 @@ useKeyboardShortcuts({
   }
 })
 
-import { onMounted } from 'vue'
-
 onMounted(() => {
-  window.addEventListener('file-delete', (e) => {
-    handleDeleteFile(e.detail.fileId)
-  })
-
   const validFileIds = fileSystem.files.value.filter(f => f.type === 'file').map(f => f.id)
   validateTabs(validFileIds)
+  syncDisplayModeForFile(currentFileId.value)
 })
 </script>
 

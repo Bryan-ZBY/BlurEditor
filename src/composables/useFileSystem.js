@@ -136,17 +136,71 @@ export function useFileSystem() {
     saveToStorage(files.value, currentFileId.value)
   }
 
-  function createFile(parentId = null, name = '新建文档.md', content = '', tags = []) {
-    const siblings = files.value.filter((f) => f.parentId === parentId && !f.isArchived)
-    const baseName = name.replace(/\.md$/, '')
-    const ext = '.md'
+  function normalizeName(name) {
+    return String(name || '').trim().toLocaleLowerCase()
+  }
 
-    let finalName = name
+  function getActiveSiblings(parentId) {
+    return files.value.filter((f) => f.parentId === parentId && !f.isArchived)
+  }
+
+  function hasDuplicateName(parentId, name, excludeId = null) {
+    const normalized = normalizeName(name)
+    if (!normalized) return false
+    return getActiveSiblings(parentId).some((f) => f.id !== excludeId && normalizeName(f.name) === normalized)
+  }
+
+  function getUniqueName(parentId, name, type = 'file', excludeId = null) {
+    const fallback = type === 'folder' ? '新建文件夹' : '新建文档.md'
+    const requestedName = String(name || fallback).trim() || fallback
+    if (!hasDuplicateName(parentId, requestedName, excludeId)) return requestedName
+
+    const lastDot = type === 'file' ? requestedName.lastIndexOf('.') : -1
+    const baseName = lastDot > 0 ? requestedName.slice(0, lastDot) : requestedName
+    const ext = type === 'file' ? (lastDot > 0 ? requestedName.slice(lastDot) : '.md') : ''
     let counter = 1
-    while (siblings.some((s) => s.name === finalName)) {
-      finalName = `${baseName}${counter}${ext}`
+    let candidate = ''
+
+    do {
+      candidate = type === 'folder'
+        ? `${requestedName}${counter}`
+        : `${baseName}${counter}${ext}`
       counter += 1
+    } while (hasDuplicateName(parentId, candidate, excludeId))
+
+    return candidate
+  }
+
+  function getFileAndDescendantIds(fileId) {
+    const ids = []
+    const collect = (id) => {
+      ids.push(id)
+      files.value
+        .filter((f) => f.parentId === id)
+        .forEach((child) => collect(child.id))
     }
+    collect(fileId)
+    return ids
+  }
+
+  function isFolderDescendant(folderId, possibleAncestorId) {
+    let cursor = folderId
+    while (cursor) {
+      if (cursor === possibleAncestorId) return true
+      const parent = files.value.find((f) => f.id === cursor)
+      cursor = parent?.parentId || null
+    }
+    return false
+  }
+
+  function resolveCurrentFile(excludedIds = new Set()) {
+    if (currentFileId.value && !excludedIds.has(currentFileId.value)) return
+    const nextFile = files.value.find((f) => f.type === 'file' && !f.isArchived && !excludedIds.has(f.id))
+    currentFileId.value = nextFile ? nextFile.id : null
+  }
+
+  function createFile(parentId = null, name = '新建文档.md', content = '', tags = []) {
+    const finalName = getUniqueName(parentId, name, 'file')
 
     const newFile = {
       id: generateId(),
@@ -168,14 +222,7 @@ export function useFileSystem() {
   }
 
   function createFolder(parentId = null, name = '新建文件夹') {
-    const siblings = files.value.filter((f) => f.parentId === parentId && !f.isArchived)
-
-    let finalName = name
-    let counter = 1
-    while (siblings.some((s) => s.name === finalName)) {
-      finalName = `${name}${counter}`
-      counter += 1
-    }
+    const finalName = getUniqueName(parentId, name, 'folder')
 
     const newFolder = {
       id: generateId(),
@@ -197,59 +244,115 @@ export function useFileSystem() {
 
   function renameFile(fileId, newName) {
     const file = files.value.find((f) => f.id === fileId)
-    if (!file) return
-    file.name = newName
+    const nextName = String(newName || '').trim()
+    if (!file || !nextName) return false
+    if (hasDuplicateName(file.parentId, nextName, file.id)) return false
+    file.name = nextName
     file.updatedAt = Date.now()
     persist()
+    return true
   }
 
   function deleteFile(fileId) {
     const file = files.value.find((f) => f.id === fileId)
-    if (!file) return
-    if (file.type === 'folder') {
-      const children = files.value.filter((f) => f.parentId === fileId)
-      children.forEach((child) => deleteFile(child.id))
-    }
-    files.value = files.value.filter((f) => f.id !== fileId)
-    if (currentFileId.value === fileId) {
-      const remaining = files.value.filter((f) => f.type === 'file' && !f.isArchived)
-      currentFileId.value = remaining.length ? remaining[0].id : null
-    }
+    if (!file) return false
+    const idsToDelete = new Set(getFileAndDescendantIds(fileId))
+    files.value = files.value.filter((f) => !idsToDelete.has(f.id))
+    resolveCurrentFile(idsToDelete)
     persist()
+    return true
   }
 
   function moveFile(fileId, newParentId) {
     const file = files.value.find((f) => f.id === fileId)
-    if (!file || file.id === newParentId) return
-
-    if (file.type === 'folder') {
-      let cursor = newParentId
-      while (cursor) {
-        if (cursor === file.id) return
-        const parent = files.value.find((f) => f.id === cursor)
-        cursor = parent?.parentId || null
-      }
-    }
+    if (!file || file.id === newParentId) return false
+    if (newParentId && !files.value.some((f) => f.id === newParentId && f.type === 'folder' && !f.isArchived)) return false
+    if (file.parentId === newParentId) return true
+    if (file.type === 'folder' && isFolderDescendant(newParentId, file.id)) return false
+    if (hasDuplicateName(newParentId, file.name, file.id)) return false
 
     file.parentId = newParentId
+    file.order = Date.now()
     file.updatedAt = Date.now()
     persist()
+    return true
+  }
+
+  function reorderFile(fileId, targetParentId, targetIndex = 0) {
+    const file = files.value.find((f) => f.id === fileId)
+    if (!file || file.id === targetParentId) return false
+    if (targetParentId && !files.value.some((f) => f.id === targetParentId && f.type === 'folder' && !f.isArchived)) return false
+    if (file.type === 'folder' && isFolderDescendant(targetParentId, file.id)) return false
+    if (file.parentId !== targetParentId && hasDuplicateName(targetParentId, file.name, file.id)) return false
+
+    const siblings = getActiveSiblings(targetParentId).filter((f) => f.id !== fileId)
+    const nextIndex = Math.max(0, Math.min(Number(targetIndex) || 0, siblings.length))
+    file.parentId = targetParentId
+    file.updatedAt = Date.now()
+
+    const orderedFiles = [...siblings]
+    orderedFiles.splice(nextIndex, 0, file)
+    const baseOrder = Date.now()
+    orderedFiles.forEach((item, index) => {
+      item.order = baseOrder + index
+    })
+    persist()
+    return true
   }
 
   function archiveFile(fileId) {
     const file = files.value.find((f) => f.id === fileId)
-    if (!file) return
-    file.isArchived = true
-    file.updatedAt = Date.now()
+    if (!file) return false
+    const idsToArchive = new Set(getFileAndDescendantIds(fileId))
+    const now = Date.now()
+    files.value.forEach((item) => {
+      if (idsToArchive.has(item.id)) {
+        item.isArchived = true
+        item.updatedAt = now
+      }
+    })
+    resolveCurrentFile(idsToArchive)
     persist()
+    return true
   }
 
   function unarchiveFile(fileId) {
     const file = files.value.find((f) => f.id === fileId)
-    if (!file) return
-    file.isArchived = false
-    file.updatedAt = Date.now()
+    if (!file) return false
+
+    const idsToRestore = new Set(getFileAndDescendantIds(fileId))
+    const parent = files.value.find((f) => f.id === file.parentId)
+    if (parent?.isArchived && !idsToRestore.has(parent.id)) {
+      file.parentId = null
+    }
+    if (hasDuplicateName(file.parentId, file.name, file.id)) {
+      file.name = getUniqueName(file.parentId, file.name, file.type, file.id)
+    }
+
+    const now = Date.now()
+    files.value.forEach((item) => {
+      if (idsToRestore.has(item.id)) {
+        item.isArchived = false
+        item.updatedAt = now
+      }
+    })
     persist()
+    return true
+  }
+
+  function emptyTrash() {
+    const idsToDelete = new Set()
+    files.value
+      .filter((f) => f.isArchived)
+      .forEach((file) => {
+        getFileAndDescendantIds(file.id).forEach((id) => idsToDelete.add(id))
+      })
+    if (idsToDelete.size === 0) return 0
+
+    files.value = files.value.filter((f) => !idsToDelete.has(f.id))
+    resolveCurrentFile(idsToDelete)
+    persist()
+    return idsToDelete.size
   }
 
   function duplicateFile(fileId) {
@@ -422,11 +525,14 @@ export function useFileSystem() {
     getSortedFiles,
     createFile,
     createFolder,
+    hasDuplicateName,
     renameFile,
     deleteFile,
     moveFile,
+    reorderFile,
     archiveFile,
     unarchiveFile,
+    emptyTrash,
     duplicateFile,
     updateFileContent,
     setCurrentFile,

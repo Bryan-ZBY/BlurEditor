@@ -77,6 +77,9 @@
           <svg v-else-if="option.icon === 'size'" xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
           </svg>
+          <svg v-else xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M7 12h10M10 16h4" />
+          </svg>
           <span>{{ option.label }}</span>
           <svg v-if="sortMode === option.value" xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
@@ -111,6 +114,19 @@
       </div>
     </div>
 
+    <div v-if="recentList.length > 0" class="fm-quick-list">
+      <div class="fm-quick-title">最近打开</div>
+      <div
+        v-for="file in recentList"
+        :key="file.id"
+        class="fm-quick-item"
+        @click="handleQuickSelect(file.id)"
+      >
+        <span class="quick-dot recent"></span>
+        <span class="truncate">{{ file.name }}</span>
+      </div>
+    </div>
+
     <div class="fm-body custom-scrollbar">
       <template v-if="searchText">
         <div v-if="searchMatches.length === 0" class="fm-empty">
@@ -137,11 +153,12 @@
         </div>
       </template>
 
-      <TransitionGroup name="list" tag="div">
+      <TransitionGroup v-if="!searchText" name="list" tag="div">
         <FileTreeItem
           v-for="(file, index) in displayedFiles"
           :key="file.id"
           :file="file"
+          :index="index"
           :level="0"
           :current-file-id="currentFileId"
           :expanded-ids="expandedIds"
@@ -155,7 +172,10 @@
           @create-file="$emit('createFile', $event)"
           @create-folder="$emit('createFolder', $event)"
           @move="$emit('moveFile', $event)"
+          @reorder="handleReorder"
           @rename="$emit('renameFile', $event)"
+          @archive="$emit('archiveFile', $event)"
+          @duplicate="$emit('duplicateFile', $event)"
           @toggleFavorite="$emit('toggleFavorite', $event)"
         />
       </TransitionGroup>
@@ -172,24 +192,29 @@
     </div>
 
     <div v-if="archivedFiles.length > 0" class="fm-archive">
-      <button @click="showArchived = !showArchived" class="fm-archive-toggle">
-        <span class="fm-archive-left">
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 archive-icon" :class="{ open: showArchived }" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+      <div class="fm-archive-bar">
+        <button @click="showArchived = !showArchived" class="fm-archive-toggle">
+          <span class="fm-archive-left">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5 archive-icon" :class="{ open: showArchived }" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+            </svg>
+            <span>回收站 ({{ archivedFiles.length }})</span>
+          </span>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            class="w-3.5 h-3.5 chevron"
+            :class="{ open: showArchived }"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
           </svg>
-          <span>回收站 ({{ archivedFiles.length }})</span>
-        </span>
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          class="w-3.5 h-3.5 chevron"
-          :class="{ open: showArchived }"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
+        </button>
+        <button class="fm-trash-empty" title="清空回收站" @click="$emit('emptyTrash')">
+          清空
+        </button>
+      </div>
       <Transition name="expand">
         <div v-if="showArchived" class="fm-archive-list">
           <div
@@ -199,7 +224,10 @@
             class="fm-archive-item"
             :style="{ animationDelay: index * 40 + 'ms' }"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg v-if="file.type === 'folder'" xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-amber-400" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+            </svg>
+            <svg v-else xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
             <span class="truncate">{{ file.name }}</span>
@@ -218,6 +246,7 @@ import FileTreeItem from './FileTreeItem.vue'
 const props = defineProps({
   rootFiles: Array,
   archivedFiles: Array,
+  recentFiles: Array,
   files: Array,
   currentFileId: String,
   getChildren: Function,
@@ -231,7 +260,13 @@ const emit = defineEmits([
   'createFile',
   'createFolder',
   'moveFile',
+  'reorderFile',
+  'archiveFile',
+  'deleteFile',
+  'duplicateFile',
+  'exportFile',
   'unarchiveFile',
+  'emptyTrash',
   'renameFile',
   'openImport',
   'setSortMode',
@@ -246,6 +281,7 @@ const searchText = ref('')
 const expandedIds = ref(new Set())
 
 const sortOptions = [
+  { value: 'manual', label: '手动排序', icon: 'manual' },
   { value: 'name', label: '按名称', icon: 'name' },
   { value: 'date', label: '按时间', icon: 'date' },
   { value: 'size', label: '按大小', icon: 'size' }
@@ -270,6 +306,8 @@ const favoriteFiles = computed(() => {
     .filter((f) => !f.isArchived && f.isFavorite)
     .sort((a, b) => (b.lastOpenedAt || b.updatedAt) - (a.lastOpenedAt || a.updatedAt))
 })
+
+const recentList = computed(() => (props.recentFiles || []).slice(0, 5))
 
 function toggleFolder(folderId) {
   if (expandedIds.value.has(folderId)) {
@@ -296,6 +334,10 @@ function handleSort(mode) {
 
 function handleQuickSelect(fileId) {
   emit('selectFile', fileId)
+}
+
+function handleReorder(payload) {
+  emit('reorderFile', payload)
 }
 
 watch(showNewMenu, (val) => {
@@ -530,6 +572,22 @@ function expandToFile(fileId, parentFolderIds) {
   background: var(--hover-bg, rgba(96, 165, 250, 0.08));
 }
 
+.fm-trash-empty {
+  border: 1px solid var(--border-color, rgba(148, 163, 184, 0.2));
+  border-radius: 0.45rem;
+  background: transparent;
+  color: var(--text-primary, #e2e8f0);
+  font-size: 0.7rem;
+  height: 1.65rem;
+  padding: 0 0.45rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.fm-trash-empty:hover {
+  background: var(--hover-bg, rgba(96, 165, 250, 0.1));
+}
+
 .fm-body {
   flex: 1;
   min-height: 0;
@@ -574,6 +632,11 @@ function expandToFile(fileId, parentFolderIds) {
   box-shadow: 0 0 0 3px var(--accent-glow, rgba(96, 165, 250, 0.2));
 }
 
+.quick-dot.recent {
+  background: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.16);
+}
+
 .fm-search-results {
   padding: 0 0.4rem;
 }
@@ -603,8 +666,15 @@ function expandToFile(fileId, parentFolderIds) {
   padding-top: 0.5rem;
 }
 
+.fm-archive-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0 0.45rem 0.4rem;
+}
+
 .fm-archive-toggle {
-  width: 100%;
+  flex: 1;
   border: none;
   background: transparent;
   color: var(--text-muted, #94a3b8);
@@ -612,7 +682,8 @@ function expandToFile(fileId, parentFolderIds) {
   align-items: center;
   justify-content: space-between;
   gap: 0.45rem;
-  padding: 0.45rem 0.65rem;
+  padding: 0.45rem 0.2rem;
+  cursor: pointer;
 }
 
 .fm-archive-left {
