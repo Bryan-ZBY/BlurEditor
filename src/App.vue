@@ -731,6 +731,43 @@ const handleToggleOutline = () => {
   editorComponent.value?.toggleOutline?.()
 }
 
+function closePreviewVimLayer() {
+  if (isZenMode.value) {
+    isZenMode.value = false
+    return true
+  }
+
+  if (isFullscreenPreview.value) {
+    isFullscreenPreview.value = false
+    return true
+  }
+
+  exitPreviewMode()
+  return true
+}
+
+function handlePreviewVimKey(event = {}) {
+  if (
+    !isPreviewMode.value ||
+    showCommandPalette.value ||
+    showImportModal.value
+  ) {
+    return false
+  }
+
+  const key = String(event.key || '')
+  if (key === 'Escape' || key.toLowerCase() === 'q') {
+    return closePreviewVimLayer()
+  }
+
+  if (key === '/') {
+    handleOpenCommandPalette()
+    return true
+  }
+
+  return !!editorComponent.value?.handlePreviewVimKey?.(event)
+}
+
 const startResize = (e) => {
   e.preventDefault()
   isResizing.value = true
@@ -776,6 +813,7 @@ useKeyboardShortcuts({
   onTogglePrevTheme: toggleThemePrevious,
   onOpenCommandPalette: handleOpenCommandPalette,
   onRepeatSearch: handleRepeatSearch,
+  onPreviewVimKey: handlePreviewVimKey,
   onEscape: () => {
     if (showCommandPalette.value) {
       showCommandPalette.value = false

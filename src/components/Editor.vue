@@ -306,6 +306,8 @@
                 <div
                   ref="previewRef"
                   class="preview-content custom-scrollbar"
+                  tabindex="0"
+                  aria-label="Markdown 预览"
                   v-html="previewContent"
                   :style="previewTypographyStyle"
                   @scroll="handlePreviewScroll"
@@ -329,7 +331,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, nextTick, getCurrentInstance } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch, nextTick, getCurrentInstance } from 'vue'
 import { marked } from 'marked'
 import hljs from 'highlight.js'
 import mermaid from 'mermaid'
@@ -426,6 +428,10 @@ let hljsStyleEl = null
 let previewHighlightTimer = null
 let previewSearchActiveIndex = -1
 let previewSearchActiveQuery = ''
+let previewGSequenceTimer = null
+let isPreviewGSequenceArmed = false
+let previewScrollAnimationFrame = null
+let previewScrollAnimationTarget = null
 function loadHljsTheme(isDark) {
   document.querySelectorAll('[data-hljs-theme]').forEach(el => el.remove())
   
@@ -904,14 +910,207 @@ function getPreviewTargetScrollTop(preview, targetNode) {
   return preview.scrollTop + targetRect.top - previewRect.top - preview.clientHeight * 0.18
 }
 
-function setPreviewScrollTop(preview, targetTop) {
+function getClampedPreviewScrollTop(preview, targetTop) {
   const maxScrollTop = Math.max(0, preview.scrollHeight - preview.clientHeight)
-  const nextTop = Math.max(0, Math.min(targetTop, maxScrollTop))
+  return Math.max(0, Math.min(targetTop, maxScrollTop))
+}
 
-  preview.scrollTo?.({ top: nextTop, behavior: 'smooth' })
-  if (!preview.scrollTo) {
-    preview.scrollTop = nextTop
+function cancelPreviewScrollAnimation() {
+  if (previewScrollAnimationFrame) {
+    window.cancelAnimationFrame(previewScrollAnimationFrame)
+    previewScrollAnimationFrame = null
   }
+  previewScrollAnimationTarget = null
+}
+
+function easeOutCubic(progress) {
+  return 1 - Math.pow(1 - progress, 3)
+}
+
+function animatePreviewScrollTop(preview, targetTop, duration = 180) {
+  const nextTop = getClampedPreviewScrollTop(preview, targetTop)
+  const startTop = preview.scrollTop
+  const distance = nextTop - startTop
+
+  cancelPreviewScrollAnimation()
+  previewScrollAnimationTarget = nextTop
+
+  if (Math.abs(distance) < 1) {
+    preview.scrollTop = nextTop
+    cancelPreviewScrollAnimation()
+    refreshPreviewScrollState()
+    return
+  }
+
+  const startedAt = performance.now()
+  const animationDuration = Math.max(80, duration)
+
+  function tick(now) {
+    const progress = Math.min(1, (now - startedAt) / animationDuration)
+    preview.scrollTop = startTop + distance * easeOutCubic(progress)
+
+    if (progress < 1) {
+      previewScrollAnimationFrame = window.requestAnimationFrame(tick)
+      return
+    }
+
+    preview.scrollTop = nextTop
+    cancelPreviewScrollAnimation()
+    refreshPreviewScrollState()
+  }
+
+  previewScrollAnimationFrame = window.requestAnimationFrame(tick)
+}
+
+function setPreviewScrollTop(preview, targetTop, behavior = 'smooth', options = {}) {
+  const nextTop = getClampedPreviewScrollTop(preview, targetTop)
+
+  if (behavior === 'auto') {
+    cancelPreviewScrollAnimation()
+    preview.scrollTop = nextTop
+    refreshPreviewScrollState()
+    return
+  }
+
+  animatePreviewScrollTop(preview, nextTop, options.duration)
+}
+
+function refreshPreviewScrollState() {
+  requestAnimationFrame(() => {
+    updateActiveHeadingFromScroll()
+  })
+}
+
+function getPreviewLineStep(preview) {
+  const style = window.getComputedStyle(preview)
+  const fontSize = parseFloat(style.fontSize) || 16
+  const lineHeight = parseFloat(style.lineHeight) || fontSize * 1.6
+  return Math.max(18, lineHeight)
+}
+
+function getPreviewScrollBase(preview) {
+  return Number.isFinite(previewScrollAnimationTarget)
+    ? previewScrollAnimationTarget
+    : preview.scrollTop
+}
+
+function scrollPreviewBy(delta, duration = 120) {
+  const preview = getPreviewEl()
+  if (!preview) return false
+
+  setPreviewScrollTop(preview, getPreviewScrollBase(preview) + delta, 'smooth', { duration })
+  return true
+}
+
+function scrollPreviewToEdge(edge, duration = 260) {
+  const preview = getPreviewEl()
+  if (!preview) return false
+
+  const targetTop = edge === 'bottom'
+    ? preview.scrollHeight - preview.clientHeight
+    : 0
+  setPreviewScrollTop(preview, targetTop, 'smooth', { duration })
+  return true
+}
+
+function getPreviewHeadingNodes(preview) {
+  const anchoredHeadings = Array.from(preview.querySelectorAll('[data-outline-id]'))
+  if (anchoredHeadings.length > 0) return anchoredHeadings
+
+  return Array.from(preview.querySelectorAll('h1, h2, h3, h4, h5, h6'))
+}
+
+function scrollPreviewToSiblingHeading(direction = 1) {
+  const preview = getPreviewEl()
+  if (!preview) return false
+
+  const headings = getPreviewHeadingNodes(preview)
+  if (headings.length === 0) return false
+
+  const anchorTop = preview.scrollTop + preview.clientHeight * 0.18
+  const target = direction > 0
+    ? headings.find((node) => node.offsetTop > anchorTop + 4)
+    : [...headings].reverse().find((node) => node.offsetTop < anchorTop - 4)
+
+  if (!target) {
+    return scrollPreviewToEdge(direction > 0 ? 'bottom' : 'top', 240)
+  }
+
+  setPreviewScrollTop(preview, getPreviewTargetScrollTop(preview, target), 'smooth', { duration: 220 })
+  activeHeadingId.value = target.dataset.outlineId || activeHeadingId.value
+  return true
+}
+
+function resetPreviewGSequence() {
+  if (previewGSequenceTimer) {
+    window.clearTimeout(previewGSequenceTimer)
+    previewGSequenceTimer = null
+  }
+  isPreviewGSequenceArmed = false
+}
+
+function isSpaceKey(key, code) {
+  return key === ' ' || key === 'Spacebar' || code === 'Space'
+}
+
+function handlePreviewVimKey(event = {}) {
+  const preview = getPreviewEl()
+  if (!props.isPreviewMode || !preview) return false
+
+  const rawKey = String(event.key || '')
+  const key = rawKey.toLowerCase()
+  const isShift = !!event.shiftKey
+  const isUpperG = rawKey === 'G' || (key === 'g' && isShift)
+  const isLowerG = key === 'g' && !isUpperG
+
+  if (!isLowerG) {
+    resetPreviewGSequence()
+  }
+
+  if (isSpaceKey(rawKey, event.code)) {
+    return scrollPreviewBy((isShift ? -1 : 1) * preview.clientHeight * 0.88, 190)
+  }
+
+  if (key === 'j' && !isShift) {
+    return scrollPreviewBy(getPreviewLineStep(preview), 100)
+  }
+
+  if (key === 'k' && !isShift) {
+    return scrollPreviewBy(-getPreviewLineStep(preview), 100)
+  }
+
+  if (key === 'd' && !isShift) {
+    return scrollPreviewBy(preview.clientHeight * 0.5, 170)
+  }
+
+  if (key === 'u' && !isShift) {
+    return scrollPreviewBy(-preview.clientHeight * 0.5, 170)
+  }
+
+  if (isUpperG) {
+    return scrollPreviewToEdge('bottom', 280)
+  }
+
+  if (key === 'g') {
+    if (isPreviewGSequenceArmed) {
+      resetPreviewGSequence()
+      return scrollPreviewToEdge('top', 280)
+    }
+
+    isPreviewGSequenceArmed = true
+    previewGSequenceTimer = window.setTimeout(resetPreviewGSequence, 600)
+    return true
+  }
+
+  if (rawKey === '}') {
+    return scrollPreviewToSiblingHeading(1)
+  }
+
+  if (rawKey === '{') {
+    return scrollPreviewToSiblingHeading(-1)
+  }
+
+  return false
 }
 
 function clearPreviewSearchHighlight(preview = getPreviewEl()) {
@@ -1170,6 +1369,13 @@ watch(
   { deep: true, immediate: true }
 )
 
+watch(() => props.isPreviewMode, (isPreviewMode) => {
+  if (!isPreviewMode) {
+    resetPreviewGSequence()
+    cancelPreviewScrollAnimation()
+  }
+})
+
 onMounted(() => {
   initMermaid(props.isDark)
   loadHljsTheme(props.isDark)
@@ -1212,12 +1418,17 @@ onMounted(() => {
   })
 })
 
+onUnmounted(() => {
+  resetPreviewGSequence()
+  cancelPreviewScrollAnimation()
+})
+
 // 监听主题变化并更新 highlight.js 样式
 watch(() => props.isDark, (newVal) => {
   loadHljsTheme(newVal)
 })
 
-defineExpose({ editorRef, splitEditorRef, toggleOutline, scrollToLine, scrollPreviewToLine, repeatPreviewSearch })
+defineExpose({ editorRef, splitEditorRef, toggleOutline, scrollToLine, scrollPreviewToLine, repeatPreviewSearch, handlePreviewVimKey })
 </script>
 
 <style scoped>
@@ -1752,6 +1963,14 @@ defineExpose({ editorRef, splitEditorRef, toggleOutline, scrollToLine, scrollPre
   min-height: 0;
   overflow-y: auto;
   padding: 1.5rem 2rem;
+}
+
+.preview-content:focus {
+  outline: none;
+}
+
+.preview-content:focus-visible {
+  outline: none;
 }
 
 :deep(.preview-search-target) {

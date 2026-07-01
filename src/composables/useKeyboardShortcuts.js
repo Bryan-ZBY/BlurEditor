@@ -4,14 +4,36 @@ export function useKeyboardShortcuts(handlers) {
   function isEditableTarget(target) {
     if (!target) return false
     const tagName = target.tagName?.toLowerCase()
-    return tagName === 'input' ||
+    const isEditable = tagName === 'input' ||
       tagName === 'textarea' ||
       tagName === 'select' ||
       target.isContentEditable
+    if (!isEditable) return false
+
+    const rect = target.getBoundingClientRect?.()
+    const style = window.getComputedStyle?.(target)
+    return Boolean(
+      (!rect || rect.width > 0 || rect.height > 0) &&
+      style?.display !== 'none' &&
+      style?.visibility !== 'hidden'
+    )
   }
 
   function handleKeydown(e) {
     const isCtrl = e.ctrlKey || e.metaKey
+
+    if (!isCtrl && !e.altKey && !isEditableTarget(e.target)) {
+      const handled = handlers.onPreviewVimKey?.({
+        key: e.key,
+        code: e.code,
+        shiftKey: e.shiftKey,
+        repeat: e.repeat
+      })
+      if (handled) {
+        e.preventDefault()
+        return
+      }
+    }
 
     if (
       !isCtrl &&
@@ -19,7 +41,7 @@ export function useKeyboardShortcuts(handlers) {
       e.key.toLowerCase() === 'n' &&
       !isEditableTarget(e.target)
     ) {
-      const handled = handlers.onRepeatSearch?.(e.shiftKey ? -1 : 1)
+      const handled = handlers.onRepeatSearch?.(e.shiftKey || e.key === 'N' ? -1 : 1)
       if (handled) {
         e.preventDefault()
         return
