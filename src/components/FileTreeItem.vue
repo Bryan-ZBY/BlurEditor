@@ -44,7 +44,13 @@
           @blur="confirmRename"
         />
       </template>
-      <span v-else class="ft-name">{{ file.name }}</span>
+      <FileHoverPreview
+        v-else
+        :file="file"
+        :is-dark="isDark"
+        name-class="ft-name"
+        :disabled="isRenaming"
+      />
       <span v-if="children.length > 0" class="ft-count">{{ children.length }}</span>
       <button
         class="ft-star-btn"
@@ -89,7 +95,13 @@
           @blur="confirmRename"
         />
       </template>
-      <span v-else class="ft-name">{{ file.name }}</span>
+      <FileHoverPreview
+        v-else
+        :file="file"
+        :is-dark="isDark"
+        name-class="ft-name"
+        :disabled="isRenaming"
+      />
       <button
         class="ft-star-btn"
         :class="{ active: isFavorited }"
@@ -333,6 +345,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import ConfirmModal from './ConfirmModal.vue'
+import FileHoverPreview from './FileHoverPreview.vue'
 
 const props = defineProps({
   file: Object,

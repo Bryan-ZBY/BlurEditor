@@ -110,7 +110,7 @@
         @click="handleQuickSelect(file.id)"
       >
         <span class="quick-dot">★</span>
-        <span class="truncate">{{ file.name }}</span>
+        <FileHoverPreview :file="file" :is-dark="isDark" name-class="truncate" />
       </div>
     </div>
 
@@ -123,7 +123,7 @@
         @click="handleQuickSelect(file.id)"
       >
         <span class="quick-dot recent"></span>
-        <span class="truncate">{{ file.name }}</span>
+        <FileHoverPreview :file="file" :is-dark="isDark" name-class="truncate" />
       </div>
     </div>
 
@@ -147,7 +147,7 @@
             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            <span>{{ file.name }}</span>
+            <FileHoverPreview :file="file" :is-dark="isDark" name-class="fm-search-name" />
             <span class="fm-search-hint">{{ file.type === 'folder' ? '文件夹' : '文档' }}</span>
           </div>
         </div>
@@ -230,7 +230,7 @@
             <svg v-else xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
-            <span class="truncate">{{ file.name }}</span>
+            <FileHoverPreview :file="file" :is-dark="isDark" name-class="truncate" />
             <span class="restore-badge">恢复</span>
           </div>
         </div>
@@ -242,6 +242,7 @@
 <script setup>
 import { computed, ref, watch, nextTick } from 'vue'
 import FileTreeItem from './FileTreeItem.vue'
+import FileHoverPreview from './FileHoverPreview.vue'
 
 const props = defineProps({
   rootFiles: Array,
