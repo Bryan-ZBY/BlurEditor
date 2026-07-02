@@ -21,8 +21,19 @@ export function useKeyboardShortcuts(handlers) {
 
   function handleKeydown(e) {
     const isCtrl = e.ctrlKey || e.metaKey
+    const key = String(e.key || '').toLowerCase()
+    const isEditable = isEditableTarget(e.target)
+    const isEditorTextarea = e.target?.classList?.contains('editor-textarea')
 
-    if (!isCtrl && !e.altKey && !isEditableTarget(e.target)) {
+    function handleUndoRedo(handler) {
+      if (isEditable && !isEditorTextarea) return false
+      if (!handler) return false
+      e.preventDefault()
+      handler()
+      return true
+    }
+
+    if (!isCtrl && !e.altKey && !isEditable) {
       const handled = handlers.onPreviewVimKey?.({
         key: e.key,
         code: e.code,
@@ -38,8 +49,8 @@ export function useKeyboardShortcuts(handlers) {
     if (
       !isCtrl &&
       !e.altKey &&
-      e.key.toLowerCase() === 'n' &&
-      !isEditableTarget(e.target)
+      key === 'n' &&
+      !isEditable
     ) {
       const handled = handlers.onRepeatSearch?.(e.shiftKey || e.key === 'N' ? -1 : 1)
       if (handled) {
@@ -48,91 +59,88 @@ export function useKeyboardShortcuts(handlers) {
       }
     }
 
-    if (isCtrl && e.key === 's') {
+    if (isCtrl && key === 's') {
       e.preventDefault()
       handlers.onSave?.()
       return
     }
 
-    if (isCtrl && !e.shiftKey && e.key === 'z') {
-      e.preventDefault()
-      handlers.onUndo?.()
+    if (isCtrl && !e.shiftKey && key === 'z') {
+      if (!handleUndoRedo(handlers.onUndo)) return
       return
     }
 
-    if (isCtrl && e.shiftKey && e.key === 'z') {
-      e.preventDefault()
-      handlers.onRedo?.()
+    if (isCtrl && e.shiftKey && key === 'z') {
+      if (!handleUndoRedo(handlers.onRedo)) return
       return
     }
 
-    if (isCtrl && e.key === 'y') {
-      e.preventDefault()
-      handlers.onRedo?.()
+    if (isCtrl && key === 'y') {
+      if (!handleUndoRedo(handlers.onRedo)) return
       return
     }
 
-    if (isCtrl && e.key === 'n') {
+    if (isCtrl && key === 'n') {
       e.preventDefault()
       handlers.onNewFile?.()
       return
     }
 
-    if (isCtrl && !e.shiftKey && e.key.toLowerCase() === 'k') {
+    if (isCtrl && !e.shiftKey && key === 'k') {
       e.preventDefault()
       handlers.onOpenCommandPalette?.()
       return
     }
 
-    if (isCtrl && e.key === 'p') {
+    if (isCtrl && key === 'p') {
       e.preventDefault()
       handlers.onTogglePreview?.()
       return
     }
 
-    if (!isCtrl && e.altKey && e.key.toLowerCase() === 'z') {
+    if (!isCtrl && e.altKey && key === 'z') {
       e.preventDefault()
       handlers.onToggleZenMode?.()
       return
     }
 
-    if (!isCtrl && e.altKey && e.key.toLowerCase() === 'h') {
+    if (!isCtrl && e.altKey && key === 'h') {
       e.preventDefault()
       handlers.onToggleOutline?.()
       return
     }
 
-    if (!isCtrl && e.altKey && e.key.toLowerCase() === 'v') {
+    if (!isCtrl && e.altKey && key === 'v') {
       e.preventDefault()
       handlers.onTogglePreviewMode?.()
       return
     }
 
-    if (!isCtrl && e.altKey && e.key.toLowerCase() === 's') {
+    if (!isCtrl && e.altKey && key === 's') {
       e.preventDefault()
       handlers.onToggleSplitMode?.()
       return
     }
 
-    if (!isCtrl && e.altKey && e.key.toLowerCase() === 'l') {
+    if (!isCtrl && e.altKey && key === 'l') {
       e.preventDefault()
       handlers.onTogglePrevTheme?.()
       return
     }
 
-    if (!isCtrl && e.altKey && e.key.toLowerCase() === 'n') {
+    if (!isCtrl && e.altKey && key === 'n') {
       e.preventDefault()
       handlers.onToggleTheme?.()
       return
     }
 
-    if (!isCtrl && e.altKey && e.key.toLowerCase() === 'g') {
+    if (!isCtrl && e.altKey && key === 'g') {
       e.preventDefault()
       handlers.onOpenCommandPalette?.()
       return
     }
 
-    if (isCtrl && e.key === 'b') {
+    if (isCtrl && key === 'b') {
       e.preventDefault()
       handlers.onToggleSidebar?.()
       return
@@ -144,11 +152,30 @@ export function useKeyboardShortcuts(handlers) {
     }
   }
 
+  function handleKeyup(e) {
+    const isCtrl = e.ctrlKey || e.metaKey
+    const isEditable = isEditableTarget(e.target)
+
+    if (!isCtrl && !e.altKey && !isEditable) {
+      const handled = handlers.onPreviewVimKeyUp?.({
+        key: e.key,
+        code: e.code,
+        shiftKey: e.shiftKey,
+        repeat: e.repeat
+      })
+      if (handled) {
+        e.preventDefault()
+      }
+    }
+  }
+
   onMounted(() => {
     window.addEventListener('keydown', handleKeydown)
+    window.addEventListener('keyup', handleKeyup)
   })
 
   onUnmounted(() => {
     window.removeEventListener('keydown', handleKeydown)
+    window.removeEventListener('keyup', handleKeyup)
   })
 }

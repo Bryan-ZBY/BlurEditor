@@ -234,6 +234,13 @@
             >
               <span class="zen-btn-icon">Z</span>
             </button>
+            <button
+              @click="$emit('openPreviewHelp')"
+              class="icon-btn"
+              title="快捷键帮助"
+            >
+              <span class="zen-btn-icon">?</span>
+            </button>
             <!-- 预览切换 -->
             <button
               @click="togglePreviewMode"
@@ -368,6 +375,7 @@ const emit = defineEmits([
   'tabChange',
   'renameFile',
   'exportWorkspace',
+  'openPreviewHelp',
   'update:previewPageWidth',
   'update:previewPageCentered'
 ])
@@ -432,6 +440,15 @@ let previewGSequenceTimer = null
 let isPreviewGSequenceArmed = false
 let previewScrollAnimationFrame = null
 let previewScrollAnimationTarget = null
+let previewScrollAnimationDuration = 180
+let previewScrollAnimationLastTime = null
+let previewHoldScrollFrame = null
+let previewHoldScrollStartTimer = null
+let previewHoldScrollDirection = 0
+let previewHoldScrollKey = ''
+let previewHoldScrollLastTime = null
+const PREVIEW_HOLD_SCROLL_START_DELAY = 85
+const PREVIEW_HOLD_SCROLL_LINES_PER_SECOND = 18
 function loadHljsTheme(isDark) {
   document.querySelectorAll('[data-hljs-theme]').forEach(el => el.remove())
   
@@ -921,42 +938,51 @@ function cancelPreviewScrollAnimation() {
     previewScrollAnimationFrame = null
   }
   previewScrollAnimationTarget = null
+  previewScrollAnimationDuration = 180
+  previewScrollAnimationLastTime = null
 }
 
-function easeOutCubic(progress) {
-  return 1 - Math.pow(1 - progress, 3)
+function getPreviewScrollProgress(elapsed, duration) {
+  return Math.min(1, 1 - Math.pow(0.02, elapsed / Math.max(50, duration)))
 }
 
 function animatePreviewScrollTop(preview, targetTop, duration = 180) {
   const nextTop = getClampedPreviewScrollTop(preview, targetTop)
-  const startTop = preview.scrollTop
-  const distance = nextTop - startTop
+  const distance = nextTop - preview.scrollTop
 
-  cancelPreviewScrollAnimation()
   previewScrollAnimationTarget = nextTop
+  previewScrollAnimationDuration = Math.max(55, duration)
 
-  if (Math.abs(distance) < 1) {
+  if (Math.abs(distance) < 1 && !previewScrollAnimationFrame) {
     preview.scrollTop = nextTop
     cancelPreviewScrollAnimation()
     refreshPreviewScrollState()
     return
   }
 
-  const startedAt = performance.now()
-  const animationDuration = Math.max(80, duration)
+  if (previewScrollAnimationFrame) return
+
+  previewScrollAnimationLastTime = performance.now()
 
   function tick(now) {
-    const progress = Math.min(1, (now - startedAt) / animationDuration)
-    preview.scrollTop = startTop + distance * easeOutCubic(progress)
+    const elapsed = Math.max(0, now - (previewScrollAnimationLastTime || now))
+    previewScrollAnimationLastTime = now
 
-    if (progress < 1) {
-      previewScrollAnimationFrame = window.requestAnimationFrame(tick)
+    const target = getClampedPreviewScrollTop(preview, previewScrollAnimationTarget)
+    previewScrollAnimationTarget = target
+    const remaining = target - preview.scrollTop
+
+    if (Math.abs(remaining) < 0.5) {
+      preview.scrollTop = target
+      cancelPreviewScrollAnimation()
+      refreshPreviewScrollState()
       return
     }
 
-    preview.scrollTop = nextTop
-    cancelPreviewScrollAnimation()
-    refreshPreviewScrollState()
+    const progress = getPreviewScrollProgress(elapsed, previewScrollAnimationDuration)
+    preview.scrollTop += remaining * progress
+
+    previewScrollAnimationFrame = window.requestAnimationFrame(tick)
   }
 
   previewScrollAnimationFrame = window.requestAnimationFrame(tick)
@@ -999,6 +1025,79 @@ function scrollPreviewBy(delta, duration = 120) {
   if (!preview) return false
 
   setPreviewScrollTop(preview, getPreviewScrollBase(preview) + delta, 'smooth', { duration })
+  return true
+}
+
+function stopPreviewHoldScroll() {
+  if (previewHoldScrollStartTimer) {
+    window.clearTimeout(previewHoldScrollStartTimer)
+    previewHoldScrollStartTimer = null
+  }
+
+  if (previewHoldScrollFrame) {
+    window.cancelAnimationFrame(previewHoldScrollFrame)
+    previewHoldScrollFrame = null
+  }
+
+  previewHoldScrollDirection = 0
+  previewHoldScrollKey = ''
+  previewHoldScrollLastTime = null
+  refreshPreviewScrollState()
+}
+
+function tickPreviewHoldScroll(now) {
+  const preview = getPreviewEl()
+  if (!preview || !props.isPreviewMode || !previewHoldScrollDirection) {
+    stopPreviewHoldScroll()
+    return
+  }
+
+  const elapsed = Math.min(34, Math.max(0, now - (previewHoldScrollLastTime || now)))
+  previewHoldScrollLastTime = now
+
+  const lineStep = getPreviewLineStep(preview)
+  const delta = previewHoldScrollDirection * lineStep * PREVIEW_HOLD_SCROLL_LINES_PER_SECOND * (elapsed / 1000)
+  const nextTop = getClampedPreviewScrollTop(preview, preview.scrollTop + delta)
+
+  if (Math.abs(nextTop - preview.scrollTop) < 0.2) {
+    preview.scrollTop = nextTop
+    stopPreviewHoldScroll()
+    return
+  }
+
+  preview.scrollTop = nextTop
+  previewHoldScrollFrame = window.requestAnimationFrame(tickPreviewHoldScroll)
+}
+
+function startPreviewHoldScroll(key, direction) {
+  if (previewHoldScrollKey === key && previewHoldScrollDirection === direction) return
+
+  stopPreviewHoldScroll()
+  previewHoldScrollKey = key
+  previewHoldScrollDirection = direction
+  previewHoldScrollStartTimer = window.setTimeout(() => {
+    previewHoldScrollStartTimer = null
+    if (!previewHoldScrollDirection || !getPreviewEl() || !props.isPreviewMode) {
+      stopPreviewHoldScroll()
+      return
+    }
+
+    cancelPreviewScrollAnimation()
+    previewHoldScrollLastTime = performance.now()
+    previewHoldScrollFrame = window.requestAnimationFrame(tickPreviewHoldScroll)
+  }, PREVIEW_HOLD_SCROLL_START_DELAY)
+}
+
+function handlePreviewLineScrollKey(key, direction, event = {}) {
+  if (event.repeat && previewHoldScrollKey === key) {
+    return true
+  }
+
+  const preview = getPreviewEl()
+  if (!preview) return false
+
+  scrollPreviewBy(direction * getPreviewLineStep(preview), PREVIEW_HOLD_SCROLL_START_DELAY)
+  startPreviewHoldScroll(key, direction)
   return true
 }
 
@@ -1072,11 +1171,11 @@ function handlePreviewVimKey(event = {}) {
   }
 
   if (key === 'j' && !isShift) {
-    return scrollPreviewBy(getPreviewLineStep(preview), 100)
+    return handlePreviewLineScrollKey('j', 1, event)
   }
 
   if (key === 'k' && !isShift) {
-    return scrollPreviewBy(-getPreviewLineStep(preview), 100)
+    return handlePreviewLineScrollKey('k', -1, event)
   }
 
   if (key === 'd' && !isShift) {
@@ -1111,6 +1210,14 @@ function handlePreviewVimKey(event = {}) {
   }
 
   return false
+}
+
+function handlePreviewVimKeyUp(event = {}) {
+  const key = String(event.key || '').toLowerCase()
+  if (key !== previewHoldScrollKey) return false
+
+  stopPreviewHoldScroll()
+  return true
 }
 
 function clearPreviewSearchHighlight(preview = getPreviewEl()) {
@@ -1372,6 +1479,7 @@ watch(
 watch(() => props.isPreviewMode, (isPreviewMode) => {
   if (!isPreviewMode) {
     resetPreviewGSequence()
+    stopPreviewHoldScroll()
     cancelPreviewScrollAnimation()
   }
 })
@@ -1379,6 +1487,7 @@ watch(() => props.isPreviewMode, (isPreviewMode) => {
 onMounted(() => {
   initMermaid(props.isDark)
   loadHljsTheme(props.isDark)
+  window.addEventListener('blur', stopPreviewHoldScroll)
 
   window.copyCode = function(btn) {
     const codeBlock = btn.closest('.code-block-wrapper')
@@ -1420,7 +1529,9 @@ onMounted(() => {
 
 onUnmounted(() => {
   resetPreviewGSequence()
+  stopPreviewHoldScroll()
   cancelPreviewScrollAnimation()
+  window.removeEventListener('blur', stopPreviewHoldScroll)
 })
 
 // 监听主题变化并更新 highlight.js 样式
@@ -1428,7 +1539,7 @@ watch(() => props.isDark, (newVal) => {
   loadHljsTheme(newVal)
 })
 
-defineExpose({ editorRef, splitEditorRef, toggleOutline, scrollToLine, scrollPreviewToLine, repeatPreviewSearch, handlePreviewVimKey })
+defineExpose({ editorRef, splitEditorRef, toggleOutline, scrollToLine, scrollPreviewToLine, repeatPreviewSearch, handlePreviewVimKey, handlePreviewVimKeyUp })
 </script>
 
 <style scoped>

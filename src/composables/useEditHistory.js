@@ -5,16 +5,13 @@ const MAX_HISTORY = 100
 export function useEditHistory(getContent, setContent) {
   const history = ref([])
   const historyIndex = ref(-1)
-  const isUndoRedo = ref(false)
 
-  function saveState() {
-    if (isUndoRedo.value) {
-      isUndoRedo.value = false
+  function saveState(nextContent = getContent()) {
+    const content = String(nextContent ?? '')
+
+    if (history.value[historyIndex.value] === content) {
       return
     }
-
-    const content = getContent()
-    if (!content) return
 
     // 如果当前在历史中间位置，删除后面的历史
     if (historyIndex.value < history.value.length - 1) {
@@ -36,7 +33,6 @@ export function useEditHistory(getContent, setContent) {
     if (historyIndex.value <= 0) return false
 
     historyIndex.value--
-    isUndoRedo.value = true
     setContent(history.value[historyIndex.value])
     return true
   }
@@ -45,7 +41,6 @@ export function useEditHistory(getContent, setContent) {
     if (historyIndex.value >= history.value.length - 1) return false
 
     historyIndex.value++
-    isUndoRedo.value = true
     setContent(history.value[historyIndex.value])
     return true
   }
@@ -58,6 +53,11 @@ export function useEditHistory(getContent, setContent) {
     historyIndex.value = -1
   }
 
+  function resetHistory(content = getContent()) {
+    history.value = [String(content ?? '')]
+    historyIndex.value = 0
+  }
+
   return {
     saveState,
     undo,
@@ -65,6 +65,7 @@ export function useEditHistory(getContent, setContent) {
     canUndo,
     canRedo,
     clearHistory,
+    resetHistory,
     historyLength: computed(() => history.value.length)
   }
 }

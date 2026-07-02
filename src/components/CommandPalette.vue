@@ -53,7 +53,7 @@
         <div class="command-footer">
           <span><kbd>↑↓</kbd> 选择</span>
           <span><kbd>Enter</kbd> 打开</span>
-          <span><kbd>Ctrl</kbd> + <kbd>K</kbd> 或 <kbd>Alt</kbd> + <kbd>F</kbd> 全局入口</span>
+          <span><kbd>Ctrl</kbd> + <kbd>K</kbd> 或 <kbd>Alt</kbd> + <kbd>G</kbd> 全局入口</span>
         </div>
       </div>
     </div>

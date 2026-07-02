@@ -77,6 +77,7 @@
           @tabChange="handleTabChange"
           @renameFile="handleRenameFile"
           @exportWorkspace="handleExportWorkspace"
+          @open-preview-help="showPreviewHelp = true"
           ref="editorComponent"
         />
 
@@ -126,6 +127,12 @@
       @open-file="handleCommandPaletteOpenFile"
     />
 
+    <PreviewHelpPanel
+      :visible="showPreviewHelp"
+      :is-dark="isDark"
+      @close="showPreviewHelp = false"
+    />
+
     <!-- 保存提示 -->
     <Transition name="fade-slide">
       <div v-if="showSaveNotification" class="save-notification">
@@ -139,15 +146,17 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick, onMounted } from 'vue'
+import { ref, computed, nextTick, onMounted, watch } from 'vue'
 import Editor from './components/Editor.vue'
 import FileManager from './components/FileManager.vue'
 import ImportModal from './components/ImportModal.vue'
 import CommandPalette from './components/CommandPalette.vue'
+import PreviewHelpPanel from './components/PreviewHelpPanel.vue'
 import { useFileSystem, parseWorkspaceContent } from './composables/useFileSystem.js'
 import { useTheme } from './composables/useTheme.js'
 import { useTabs } from './composables/useTabs.js'
 import { useKeyboardShortcuts } from './composables/useKeyboardShortcuts.js'
+import { useEditHistory } from './composables/useEditHistory.js'
 
 const { theme, isDark, toggleTheme, toggleThemePrevious, setTheme } = useTheme()
 const fileSystem = useFileSystem()
@@ -162,6 +171,7 @@ const getViewportRect = () => appViewportRef.value?.getBoundingClientRect() || n
 const showImportModal = ref(false)
 const showSaveNotification = ref(false)
 const showCommandPalette = ref(false)
+const showPreviewHelp = ref(false)
 
 const editorComponent = ref(null)
 const fileManagerRef = ref(null)
@@ -245,6 +255,14 @@ const archivedFiles = fileSystem.archivedFiles
 const lastSearchQuery = ref(localStorage.getItem(LAST_SEARCH_QUERY_KEY) || '')
 const lastSearchLineIndex = ref(-1)
 const lastSearchFileId = ref(null)
+const editHistory = useEditHistory(
+  () => currentFile.value?.content ?? '',
+  (content) => {
+    if (currentFile.value) {
+      fileSystem.updateFileContent(currentFile.value.id, content)
+    }
+  }
+)
 
 const themeClass = computed(() => `theme-${theme.value}`)
 
@@ -384,7 +402,22 @@ function handleSetSortMode(mode) {
 function handleUpdateContent(content) {
   if (currentFile.value) {
     fileSystem.updateFileContent(currentFile.value.id, content)
+    editHistory.saveState(content)
   }
+}
+
+function resetEditHistoryForCurrentFile() {
+  editHistory.resetHistory(currentFile.value?.content ?? '')
+}
+
+function handleUndo() {
+  if (!currentFile.value) return
+  editHistory.undo()
+}
+
+function handleRedo() {
+  if (!currentFile.value) return
+  editHistory.redo()
 }
 
 function handleTabChange(fileId) {
@@ -731,7 +764,9 @@ const handleToggleOutline = () => {
   editorComponent.value?.toggleOutline?.()
 }
 
-function closePreviewVimLayer() {
+function closePreviewVimLayer(options = {}) {
+  const exitToEditor = options.exitToEditor !== false
+
   if (isZenMode.value) {
     isZenMode.value = false
     return true
@@ -739,6 +774,10 @@ function closePreviewVimLayer() {
 
   if (isFullscreenPreview.value) {
     isFullscreenPreview.value = false
+    return true
+  }
+
+  if (!exitToEditor) {
     return true
   }
 
@@ -756,16 +795,39 @@ function handlePreviewVimKey(event = {}) {
   }
 
   const key = String(event.key || '')
-  if (key === 'Escape' || key.toLowerCase() === 'q') {
+  const isHelpKey = key === '?' || (key === '/' && event.shiftKey)
+
+  if (showPreviewHelp.value) {
+    if (key === 'Escape' || key.toLowerCase() === 'q' || isHelpKey) {
+      showPreviewHelp.value = false
+      return true
+    }
+    return true
+  }
+
+  if (isHelpKey) {
+    showPreviewHelp.value = true
+    return true
+  }
+
+  if (key === 'Escape') {
+    return true
+  }
+
+  if (key.toLowerCase() === 'q') {
     return closePreviewVimLayer()
   }
 
-  if (key === '/') {
+  if (key === '/' && !event.shiftKey) {
     handleOpenCommandPalette()
     return true
   }
 
   return !!editorComponent.value?.handlePreviewVimKey?.(event)
+}
+
+function handlePreviewVimKeyUp(event = {}) {
+  return !!editorComponent.value?.handlePreviewVimKeyUp?.(event)
 }
 
 const startResize = (e) => {
@@ -805,6 +867,8 @@ const handleSave = () => {
 
 useKeyboardShortcuts({
   onSave: handleSave,
+  onUndo: handleUndo,
+  onRedo: handleRedo,
   onTogglePreviewMode: handleTogglePreviewMode,
   onToggleSplitMode: handleToggleSplitMode,
   onToggleZenMode: handleToggleZenMode,
@@ -814,9 +878,14 @@ useKeyboardShortcuts({
   onOpenCommandPalette: handleOpenCommandPalette,
   onRepeatSearch: handleRepeatSearch,
   onPreviewVimKey: handlePreviewVimKey,
+  onPreviewVimKeyUp: handlePreviewVimKeyUp,
   onEscape: () => {
     if (showCommandPalette.value) {
       showCommandPalette.value = false
+      return
+    }
+    if (showPreviewHelp.value) {
+      showPreviewHelp.value = false
       return
     }
     if (isZenMode.value) {
@@ -830,6 +899,10 @@ onMounted(() => {
   validateTabs(validFileIds)
   syncDisplayModeForFile(currentFileId.value)
 })
+
+watch(currentFileId, () => {
+  resetEditHistoryForCurrentFile()
+}, { immediate: true })
 </script>
 
 <style scoped>
