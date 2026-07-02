@@ -31,7 +31,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 defineOptions({
   inheritAttrs: false
@@ -53,6 +53,7 @@ const MAX_PREVIEW_CHARS = 1200
 const PREVIEW_WIDTH = 340
 const PREVIEW_HEIGHT = 280
 const VIEWPORT_GAP = 10
+const CLOSE_PREVIEW_EVENT = 'blur-editor-close-file-previews'
 
 const triggerEl = ref(null)
 const popoverEl = ref(null)
@@ -170,11 +171,16 @@ watch(showPreview, (visible) => {
   }
 })
 
+onMounted(() => {
+  window.addEventListener(CLOSE_PREVIEW_EVENT, hidePreview)
+})
+
 onBeforeUnmount(() => {
   clearPreviewTimer()
   clearHideTimer()
   document.removeEventListener('scroll', handleDocumentScroll, true)
   window.removeEventListener('resize', hidePreview)
+  window.removeEventListener(CLOSE_PREVIEW_EVENT, hidePreview)
 })
 </script>
 

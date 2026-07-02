@@ -78,6 +78,7 @@
           @renameFile="handleRenameFile"
           @exportWorkspace="handleExportWorkspace"
           @open-preview-help="showPreviewHelp = true"
+          @notify="showAppAlert"
           ref="editorComponent"
         />
 
@@ -133,6 +134,57 @@
       @close="showPreviewHelp = false"
     />
 
+    <ConfirmModal
+      :visible="confirmDialog.visible"
+      :is-dark="isDark"
+      :title="confirmDialog.title"
+      :message="confirmDialog.message"
+      :icon-type="confirmDialog.iconType"
+      :confirm-text="confirmDialog.confirmText"
+      :cancel-text="confirmDialog.cancelText"
+      :confirm-variant="confirmDialog.confirmVariant"
+      @confirm="resolveConfirmDialog(true)"
+      @cancel="resolveConfirmDialog(false)"
+    />
+
+    <TransitionGroup
+      name="app-alert"
+      tag="div"
+      class="app-alert-stack"
+      aria-live="polite"
+      aria-atomic="false"
+    >
+      <div
+        v-for="item in appAlerts"
+        :key="item.id"
+        class="app-alert"
+        :class="`app-alert-${item.type}`"
+        role="status"
+      >
+        <div class="app-alert-icon">
+          <svg v-if="item.type === 'success'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+          </svg>
+          <svg v-else-if="item.type === 'error'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+          <svg v-else-if="item.type === 'warning'" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+          </svg>
+          <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </div>
+        <div class="app-alert-copy">
+          <strong>{{ item.title }}</strong>
+          <span>{{ item.message }}</span>
+        </div>
+        <button class="app-alert-close" type="button" title="关闭提示" @click="removeAppAlert(item.id)">
+          ×
+        </button>
+      </div>
+    </TransitionGroup>
+
     <!-- 保存提示 -->
     <Transition name="fade-slide">
       <div v-if="showSaveNotification" class="save-notification">
@@ -146,12 +198,13 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick, onMounted, watch } from 'vue'
+import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import Editor from './components/Editor.vue'
 import FileManager from './components/FileManager.vue'
 import ImportModal from './components/ImportModal.vue'
 import CommandPalette from './components/CommandPalette.vue'
 import PreviewHelpPanel from './components/PreviewHelpPanel.vue'
+import ConfirmModal from './components/ConfirmModal.vue'
 import { useFileSystem, parseWorkspaceContent } from './composables/useFileSystem.js'
 import { useTheme } from './composables/useTheme.js'
 import { useTabs } from './composables/useTabs.js'
@@ -172,6 +225,19 @@ const showImportModal = ref(false)
 const showSaveNotification = ref(false)
 const showCommandPalette = ref(false)
 const showPreviewHelp = ref(false)
+const appAlerts = ref([])
+const appAlertTimers = new Map()
+let appAlertId = 0
+const confirmDialog = ref({
+  visible: false,
+  title: '确认操作',
+  message: '确定要执行此操作吗？',
+  iconType: 'warning',
+  confirmText: '确认',
+  cancelText: '取消',
+  confirmVariant: 'danger'
+})
+let confirmDialogResolver = null
 
 const editorComponent = ref(null)
 const fileManagerRef = ref(null)
@@ -221,6 +287,108 @@ const handleUpdatePreviewPageWidth = (value) => {
 const handleUpdatePreviewPageCentered = (value) => {
   isPreviewPageCentered.value = !!value
   localStorage.setItem(PREVIEW_PAGE_CENTERED_KEY, isPreviewPageCentered.value ? '1' : '0')
+}
+
+function getAppAlertTitle(type) {
+  switch (type) {
+    case 'success':
+      return '操作成功'
+    case 'warning':
+      return '请注意'
+    case 'error':
+      return '操作失败'
+    default:
+      return '提示'
+  }
+}
+
+function normalizeAppAlert(input, fallbackType = 'info') {
+  const payload = typeof input === 'string'
+    ? { message: input, type: fallbackType }
+    : { ...(input || {}) }
+  const candidateType = payload.type || payload.variant || fallbackType
+  const type = ['success', 'warning', 'error', 'info'].includes(candidateType)
+    ? candidateType
+    : 'info'
+  const message = String(payload.message || '').trim()
+
+  return {
+    message,
+    type,
+    title: payload.title || getAppAlertTitle(type),
+    duration: Number.isFinite(payload.duration) ? payload.duration : (type === 'error' ? 5200 : 3600)
+  }
+}
+
+function removeAppAlert(id) {
+  const timer = appAlertTimers.get(id)
+  if (timer) {
+    window.clearTimeout(timer)
+    appAlertTimers.delete(id)
+  }
+  appAlerts.value = appAlerts.value.filter((item) => item.id !== id)
+}
+
+function showAppAlert(input, fallbackType = 'info') {
+  const alert = normalizeAppAlert(input, fallbackType)
+  if (!alert.message) return
+
+  const item = { ...alert, id: ++appAlertId }
+  const nextAlerts = [item, ...appAlerts.value].slice(0, 4)
+  const nextIds = new Set(nextAlerts.map((nextItem) => nextItem.id))
+
+  appAlertTimers.forEach((timer, id) => {
+    if (!nextIds.has(id)) {
+      window.clearTimeout(timer)
+      appAlertTimers.delete(id)
+    }
+  })
+
+  appAlerts.value = nextAlerts
+
+  if (item.duration > 0) {
+    const timer = window.setTimeout(() => removeAppAlert(item.id), item.duration)
+    appAlertTimers.set(item.id, timer)
+  }
+}
+
+function resetConfirmDialog() {
+  confirmDialog.value = {
+    visible: false,
+    title: '确认操作',
+    message: '确定要执行此操作吗？',
+    iconType: 'warning',
+    confirmText: '确认',
+    cancelText: '取消',
+    confirmVariant: 'danger'
+  }
+}
+
+function resolveConfirmDialog(result) {
+  const resolver = confirmDialogResolver
+  confirmDialogResolver = null
+  resetConfirmDialog()
+  resolver?.(result)
+}
+
+function showConfirmDialog(options = {}) {
+  if (confirmDialogResolver) {
+    resolveConfirmDialog(false)
+  }
+
+  confirmDialog.value = {
+    visible: true,
+    title: options.title || '确认操作',
+    message: options.message || '确定要执行此操作吗？',
+    iconType: options.iconType || 'warning',
+    confirmText: options.confirmText || '确认',
+    cancelText: options.cancelText || '取消',
+    confirmVariant: options.confirmVariant || 'danger'
+  }
+
+  return new Promise((resolve) => {
+    confirmDialogResolver = resolve
+  })
 }
 
 function startFileManagerResize(e) {
@@ -310,17 +478,31 @@ function getDescendantFileIds(fileId) {
   return ids
 }
 
-function handleDeleteFile(fileId) {
+async function handleDeleteFile(fileId) {
+  const file = fileSystem.files.value.find((f) => f.id === fileId)
+  if (!file) return
+
+  const confirmed = await showConfirmDialog({
+    title: '永久删除',
+    message: `永久删除「${file.name}」？此操作无法撤销。`,
+    iconType: 'warning',
+    confirmText: '删除',
+    confirmVariant: 'danger'
+  })
+  if (!confirmed) return
+
   const idsToClose = getDescendantFileIds(fileId)
-  fileSystem.deleteFile(fileId)
-  idsToClose.forEach(id => closeTab(id))
-  syncDisplayModeForFile(currentFileId.value)
+  const deleted = fileSystem.deleteFile(fileId)
+  if (deleted) {
+    idsToClose.forEach(id => closeTab(id))
+    syncDisplayModeForFile(currentFileId.value)
+  }
 }
 
 function handleRenameFile({ fileId, newName }) {
   const renamed = fileSystem.renameFile(fileId, newName)
   if (!renamed) {
-    window.alert('同一文件夹下已存在同名项目，请换一个名称。')
+    showAppAlert('同一文件夹下已存在同名项目，请换一个名称。', 'warning')
   }
 }
 
@@ -333,18 +515,32 @@ function handleArchiveFile(fileId) {
   }
 }
 
-function handleUnarchiveFile(fileId) {
+async function handleUnarchiveFile(fileId) {
   const file = fileSystem.files.value.find((f) => f.id === fileId)
   const name = file?.name || '该项目'
-  if (window.confirm(`恢复「${name}」？`)) {
-    fileSystem.unarchiveFile(fileId)
-  }
+  const confirmed = await showConfirmDialog({
+    title: '恢复项目',
+    message: `恢复「${name}」？`,
+    iconType: 'info',
+    confirmText: '恢复',
+    confirmVariant: 'primary'
+  })
+  if (!confirmed) return
+
+  fileSystem.unarchiveFile(fileId)
 }
 
-function handleEmptyTrash() {
+async function handleEmptyTrash() {
   const archivedCount = fileSystem.archivedFiles.value.length
   if (archivedCount === 0) return
-  if (!window.confirm(`确定清空回收站中的 ${archivedCount} 个项目吗？此操作无法撤销。`)) return
+  const confirmed = await showConfirmDialog({
+    title: '清空回收站',
+    message: `确定清空回收站中的 ${archivedCount} 个项目吗？此操作无法撤销。`,
+    iconType: 'warning',
+    confirmText: '清空',
+    confirmVariant: 'danger'
+  })
+  if (!confirmed) return
 
   const idsToClose = new Set()
   fileSystem.archivedFiles.value.forEach((file) => {
@@ -374,7 +570,7 @@ function handleExportWorkspace() {
 function handleMoveFile({ fileId, newParentId }) {
   const moved = fileSystem.moveFile(fileId, newParentId)
   if (!moved) {
-    window.alert('目标文件夹下已存在同名项目，或不能移动到该位置。')
+    showAppAlert('目标文件夹下已存在同名项目，或不能移动到该位置。', 'warning')
   }
 }
 
@@ -384,7 +580,7 @@ function handleReorderFile(payload) {
     fileSystem.setSortMode('manual')
     return
   }
-  window.alert('无法排序到该位置：可能存在同名项目，或目标位置不可用。')
+  showAppAlert('无法排序到该位置：可能存在同名项目，或目标位置不可用。', 'warning')
 }
 
 function handleToggleFavorite({ fileId }) {
@@ -566,7 +762,7 @@ function finishWorkspaceImport(result) {
     const message = result?.error === 'backup_failed'
       ? '导入前备份创建失败，已取消导入。请先导出工作区备份后再试。'
       : '工作区文件格式无效，未导入。'
-    window.alert(message)
+    showAppAlert(message, 'error')
     return
   }
 
@@ -606,16 +802,22 @@ function handleImport(payload) {
   }
 }
 
-function handleRestoreImportBackup() {
+async function handleRestoreImportBackup() {
   const backup = fileSystem.importBackupInfo.value
   if (!backup) {
-    window.alert('没有可恢复的导入前备份。')
+    showAppAlert('没有可恢复的导入前备份。', 'info')
     return
   }
 
   const date = backup.createdAt ? new Date(backup.createdAt).toLocaleString() : '未知时间'
   const count = backup.summary?.totalCount || 0
-  const shouldRestore = window.confirm(`恢复 ${date} 的导入前备份（${count} 个项目）？当前工作区会被替换。`)
+  const shouldRestore = await showConfirmDialog({
+    title: '恢复导入前备份',
+    message: `恢复 ${date} 的导入前备份（${count} 个项目）？当前工作区会被替换。`,
+    iconType: 'warning',
+    confirmText: '恢复备份',
+    confirmVariant: 'danger'
+  })
   if (!shouldRestore) return
 
   finishWorkspaceImport(fileSystem.restoreImportBackup())
@@ -788,6 +990,7 @@ function closePreviewVimLayer(options = {}) {
 function handlePreviewVimKey(event = {}) {
   if (
     !isPreviewMode.value ||
+    confirmDialog.value.visible ||
     showCommandPalette.value ||
     showImportModal.value
   ) {
@@ -880,6 +1083,10 @@ useKeyboardShortcuts({
   onPreviewVimKey: handlePreviewVimKey,
   onPreviewVimKeyUp: handlePreviewVimKeyUp,
   onEscape: () => {
+    if (confirmDialog.value.visible) {
+      resolveConfirmDialog(false)
+      return
+    }
     if (showCommandPalette.value) {
       showCommandPalette.value = false
       return
@@ -898,6 +1105,14 @@ onMounted(() => {
   const validFileIds = fileSystem.files.value.filter(f => f.type === 'file').map(f => f.id)
   validateTabs(validFileIds)
   syncDisplayModeForFile(currentFileId.value)
+})
+
+onUnmounted(() => {
+  appAlertTimers.forEach((timer) => window.clearTimeout(timer))
+  appAlertTimers.clear()
+  if (confirmDialogResolver) {
+    resolveConfirmDialog(false)
+  }
 })
 
 watch(currentFileId, () => {
@@ -1052,6 +1267,128 @@ watch(currentFileId, () => {
 .modal-leave-to :deep(.global-search-modal) {
   transform: scale(0.96) translateY(8px);
   opacity: 0;
+}
+
+/* 应用内提示 */
+.app-alert-stack {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  width: min(24rem, calc(100vw - 2rem));
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  z-index: 11000;
+  pointer-events: none;
+}
+
+.app-alert {
+  --alert-accent: #3b82f6;
+  --alert-tint: rgba(59, 130, 246, 0.12);
+  --alert-shadow: rgba(15, 23, 42, 0.16);
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr) 1.75rem;
+  align-items: flex-start;
+  gap: 0.75rem;
+  min-height: 4rem;
+  padding: 0.875rem;
+  background: color-mix(in srgb, var(--menu-bg, #fff) 92%, transparent);
+  border: 1px solid var(--border-color, rgba(148, 163, 184, 0.28));
+  border-left: 3px solid var(--alert-accent);
+  border-radius: 0.5rem;
+  color: var(--text-primary, #0f172a);
+  box-shadow: 0 16px 36px -22px var(--alert-shadow), 0 8px 20px -16px rgba(15, 23, 42, 0.24);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  pointer-events: auto;
+}
+
+.app-alert-success {
+  --alert-accent: #10b981;
+  --alert-tint: rgba(16, 185, 129, 0.14);
+  --alert-shadow: rgba(16, 185, 129, 0.24);
+}
+
+.app-alert-warning {
+  --alert-accent: #f59e0b;
+  --alert-tint: rgba(245, 158, 11, 0.16);
+  --alert-shadow: rgba(245, 158, 11, 0.24);
+}
+
+.app-alert-error {
+  --alert-accent: #ef4444;
+  --alert-tint: rgba(239, 68, 68, 0.14);
+  --alert-shadow: rgba(239, 68, 68, 0.24);
+}
+
+.app-alert-icon {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--alert-accent);
+  background: var(--alert-tint);
+  flex-shrink: 0;
+}
+
+.app-alert-icon svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.app-alert-copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  line-height: 1.45;
+}
+
+.app-alert-copy strong {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+}
+
+.app-alert-copy span {
+  font-size: 0.8125rem;
+  color: var(--text-secondary, #475569);
+  overflow-wrap: anywhere;
+}
+
+.app-alert-close {
+  width: 1.75rem;
+  height: 1.75rem;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted, #64748b);
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+
+.app-alert-close:hover {
+  background: var(--hover-bg, rgba(15, 23, 42, 0.06));
+  color: var(--text-primary, #0f172a);
+}
+
+.app-alert-enter-active,
+.app-alert-leave-active {
+  transition: opacity 0.2s ease, transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.app-alert-enter-from,
+.app-alert-leave-to {
+  opacity: 0;
+  transform: translateY(-10px) scale(0.98);
+}
+
+.app-alert-move {
+  transition: transform 0.2s ease;
 }
 
 /* 保存提示 */

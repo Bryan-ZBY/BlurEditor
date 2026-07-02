@@ -376,6 +376,7 @@ const emit = defineEmits([
   'renameFile',
   'exportWorkspace',
   'openPreviewHelp',
+  'notify',
   'update:previewPageWidth',
   'update:previewPageCentered'
 ])
@@ -645,6 +646,10 @@ function buildExportOptions(overrides = {}) {
     ...exportStyleOptions.value,
     ...overrides
   }
+}
+
+function notify(message, type = 'info') {
+  emit('notify', { message, type })
 }
 
 function setExportThemeMode(mode) {
@@ -1435,14 +1440,16 @@ function handleExport(format) {
       exportAsHTML(props.content, fileName, buildExportOptions({ offline: true, includeExternalLinks: false }))
       break
     case 'pdf':
-      exportAsPDF(props.content, fileName, buildExportOptions({ title: htmlTitle }))
+      exportAsPDF(props.content, fileName, buildExportOptions({ title: htmlTitle, onNotify: notify }))
       break
     case 'txt':
       exportAsPlainText(props.content, fileName)
       break
     case 'richtext':
       copyAsRichText(props.content).then(() => {
-        alert('已复制富文本到剪贴板')
+        notify('已复制富文本到剪贴板', 'success')
+      }).catch(() => {
+        notify('复制富文本失败，请检查剪贴板权限。', 'error')
       })
       break
     case 'workspace':

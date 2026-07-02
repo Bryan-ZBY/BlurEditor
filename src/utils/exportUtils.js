@@ -577,7 +577,7 @@ export function exportAsPDF(content, fileName, options = {}) {
   const url = URL.createObjectURL(blob)
   const win = window.open(url, '_blank')
   if (!win) {
-    alert('未能打开新窗口，请允许弹窗后重试。')
+    options.onNotify?.('未能打开新窗口，请允许弹窗后重试。', 'error')
     URL.revokeObjectURL(url)
     return
   }

@@ -143,6 +143,8 @@
           @archive="$emit('archive', $event)"
           @duplicate="$emit('duplicate', $event)"
           @toggleFavorite="$emit('toggleFavorite', $event)"
+          @show-details="$emit('show-details', $event)"
+          @context-open="$emit('context-open')"
         />
         <div
           v-if="children.length === 0"
@@ -165,7 +167,7 @@
         >
           <button @click="handleAction('details')" class="ft-context-item">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-            <span>详情</span>
+            <span>属性</span>
           </button>
           <button @click="handleAction('rename')" class="ft-context-item">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
@@ -215,70 +217,6 @@
       @confirm="handleDeleteConfirm"
       @cancel="showDeleteConfirm = false"
     />
-
-    <!-- 文件详情弹窗 -->
-    <Transition name="modal">
-      <div
-        v-if="showFileDetails"
-        class="ft-modal-overlay"
-        @click.self="showFileDetails = false"
-      >
-        <div class="ft-modal" :class="isDark ? 'dark' : 'light'">
-          <div class="ft-modal-header">
-            <h3>文件详情</h3>
-            <button @click="showFileDetails = false" class="ft-modal-close">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-          <div class="ft-modal-body">
-            <div class="ft-detail-icon">
-              <svg v-if="contextFile?.type === 'folder'" xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-amber-400" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-              </svg>
-              <svg v-else xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" :class="isDark ? 'text-slate-400' : 'text-gray-400'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            <div class="ft-detail-info">
-              <p class="ft-detail-name">{{ contextFile?.name }}</p>
-              <p class="ft-detail-type">{{ contextFile?.type === 'folder' ? '文件夹' : 'Markdown 文件' }}</p>
-            </div>
-          </div>
-          <div class="ft-detail-list">
-            <div class="ft-detail-row">
-              <span>创建时间</span>
-              <span>{{ formatDate(contextFile?.createdAt) }}</span>
-            </div>
-            <div class="ft-detail-row">
-              <span>修改时间</span>
-              <span>{{ formatDate(contextFile?.updatedAt) }}</span>
-            </div>
-            <div v-if="contextFile?.type === 'file'" class="ft-detail-row">
-              <span>文件大小</span>
-              <span>{{ formatSize(contextFile?.content?.length || 0) }}</span>
-            </div>
-            <div v-if="contextFile?.type === 'file'" class="ft-detail-row">
-              <span>字符数</span>
-              <span>{{ contextFile?.content?.length || 0 }}</span>
-            </div>
-            <div v-if="contextFile?.type === 'file'" class="ft-detail-row">
-              <span>行数</span>
-              <span>{{ contextFile?.content ? contextFile.content.split('\n').length : 0 }}</span>
-            </div>
-            <div v-if="contextFile?.type === 'folder'" class="ft-detail-row">
-              <span>子项数量</span>
-              <span>{{ children.length }}</span>
-            </div>
-            <div class="ft-detail-row">
-              <span>文件 ID</span>
-              <span class="font-mono">{{ contextFile?.id?.substring(0, 8) }}...</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </Transition>
 
     <!-- 移动对话框 -->
     <Transition name="modal">
@@ -343,7 +281,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onBeforeUnmount, onMounted } from 'vue'
 import ConfirmModal from './ConfirmModal.vue'
 import FileHoverPreview from './FileHoverPreview.vue'
 
@@ -372,8 +310,13 @@ const emit = defineEmits([
   'rename',
   'archive',
   'duplicate',
-  'toggleFavorite'
+  'toggleFavorite',
+  'show-details',
+  'context-open'
 ])
+
+const CLOSE_FILE_PREVIEW_EVENT = 'blur-editor-close-file-previews'
+const CLOSE_FILE_CONTEXT_MENUS_EVENT = 'blur-editor-close-file-context-menus'
 
 const isCurrent = computed(() => props.file.id === props.currentFileId)
 const isExpanded = computed(() => props.expandedIds.has(props.file.id))
@@ -408,7 +351,6 @@ const contextMenuVisible = ref(false)
 const contextMenuX = ref(0)
 const contextMenuY = ref(0)
 const contextFile = ref(null)
-const showFileDetails = ref(false)
 const isDraggingOver = ref(false)
 const showMoveDialog = ref(false)
 const selectedFolderId = ref(null)
@@ -419,6 +361,9 @@ const showDeleteConfirm = ref(false)
 const deleteFile = ref(null)
 
 function showContextMenu(e, file) {
+  window.dispatchEvent(new CustomEvent(CLOSE_FILE_CONTEXT_MENUS_EVENT))
+  window.dispatchEvent(new CustomEvent(CLOSE_FILE_PREVIEW_EVENT))
+  emit('context-open')
   contextFile.value = file
 
   const menuWidth = 170
@@ -446,12 +391,18 @@ function showContextMenu(e, file) {
   const closeHandler = () => {
     contextMenuVisible.value = false
     document.removeEventListener('click', closeHandler)
+    document.removeEventListener('contextmenu', closeHandler)
     document.removeEventListener('scroll', closeHandler)
   }
   setTimeout(() => {
     document.addEventListener('click', closeHandler)
+    document.addEventListener('contextmenu', closeHandler)
     document.addEventListener('scroll', closeHandler)
   }, 0)
+}
+
+function closeContextMenu() {
+  contextMenuVisible.value = false
 }
 
 function handleAction(action) {
@@ -460,7 +411,7 @@ function handleAction(action) {
 
   switch (action) {
     case 'details':
-      showFileDetails.value = true
+      emit('show-details', file)
       break
     case 'delete':
       deleteFile.value = file
@@ -607,6 +558,14 @@ function formatDate(timestamp) {
   const minutes = String(date.getMinutes()).padStart(2, '0')
   return `${year}-${month}-${day} ${hours}:${minutes}`
 }
+
+onMounted(() => {
+  window.addEventListener(CLOSE_FILE_CONTEXT_MENUS_EVENT, closeContextMenu)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener(CLOSE_FILE_CONTEXT_MENUS_EVENT, closeContextMenu)
+})
 </script>
 
 <style scoped>

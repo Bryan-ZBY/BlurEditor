@@ -177,6 +177,8 @@
           @archive="$emit('archiveFile', $event)"
           @duplicate="$emit('duplicateFile', $event)"
           @toggleFavorite="$emit('toggleFavorite', $event)"
+          @show-details="openFileProperties"
+          @context-open="closeFileProperties"
         />
       </TransitionGroup>
 
@@ -221,6 +223,7 @@
             v-for="(file, index) in archivedFiles"
             :key="file.id"
             @click="$emit('unarchiveFile', file.id)"
+            @contextmenu.prevent.stop="showArchivedContextMenu($event, file)"
             class="fm-archive-item"
             :style="{ animationDelay: index * 40 + 'ms' }"
           >
@@ -236,13 +239,47 @@
         </div>
       </Transition>
     </div>
+
+    <Teleport to="body">
+      <Transition name="context">
+        <div
+          v-if="archivedContextMenuVisible"
+          class="fm-context-menu"
+          :class="isDark ? 'dark' : 'light'"
+          :style="{ left: archivedContextMenuX + 'px', top: archivedContextMenuY + 'px' }"
+        >
+          <button class="fm-context-item" @click="handleArchivedContextAction('restore')">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a5 5 0 010 10H7m-4-10l4-4m-4 4l4 4" />
+            </svg>
+            <span>恢复</span>
+          </button>
+          <div class="fm-context-divider"></div>
+          <button class="fm-context-item danger" @click="handleArchivedContextAction('delete')">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            <span>删除</span>
+          </button>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <FilePropertiesModal
+      :visible="Boolean(propertyFile)"
+      :file="propertyFile"
+      :is-dark="isDark"
+      :child-count="propertyFileChildCount"
+      @close="closeFileProperties"
+    />
   </div>
 </template>
 
 <script setup>
-import { computed, ref, watch, nextTick } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch, nextTick } from 'vue'
 import FileTreeItem from './FileTreeItem.vue'
 import FileHoverPreview from './FileHoverPreview.vue'
+import FilePropertiesModal from './FilePropertiesModal.vue'
 
 const props = defineProps({
   rootFiles: Array,
@@ -280,6 +317,13 @@ const showSortMenu = ref(false)
 const showFavorites = ref(true)
 const searchText = ref('')
 const expandedIds = ref(new Set())
+const archivedContextMenuVisible = ref(false)
+const archivedContextMenuX = ref(0)
+const archivedContextMenuY = ref(0)
+const archivedContextFile = ref(null)
+const propertyFile = ref(null)
+const CLOSE_FILE_PREVIEW_EVENT = 'blur-editor-close-file-previews'
+const CLOSE_FILE_CONTEXT_MENUS_EVENT = 'blur-editor-close-file-context-menus'
 
 const sortOptions = [
   { value: 'manual', label: '手动排序', icon: 'manual' },
@@ -309,6 +353,10 @@ const favoriteFiles = computed(() => {
 })
 
 const recentList = computed(() => (props.recentFiles || []).slice(0, 5))
+const propertyFileChildCount = computed(() => {
+  if (!propertyFile.value || propertyFile.value.type !== 'folder') return 0
+  return props.getChildren?.(propertyFile.value.id)?.length || 0
+})
 
 function toggleFolder(folderId) {
   if (expandedIds.value.has(folderId)) {
@@ -341,6 +389,78 @@ function handleReorder(payload) {
   emit('reorderFile', payload)
 }
 
+function closeFileProperties() {
+  propertyFile.value = null
+}
+
+function openFileProperties(file) {
+  closeArchivedContextMenu()
+  propertyFile.value = null
+  nextTick(() => {
+    propertyFile.value = file
+  })
+}
+
+function closeArchivedContextMenu() {
+  archivedContextMenuVisible.value = false
+  archivedContextFile.value = null
+}
+
+function showArchivedContextMenu(event, file) {
+  window.dispatchEvent(new CustomEvent(CLOSE_FILE_CONTEXT_MENUS_EVENT))
+  window.dispatchEvent(new CustomEvent(CLOSE_FILE_PREVIEW_EVENT))
+  closeFileProperties()
+  archivedContextFile.value = file
+  showNewMenu.value = false
+  showSortMenu.value = false
+
+  const menuWidth = 150
+  const menuHeight = 96
+  const windowWidth = window.innerWidth
+  const windowHeight = window.innerHeight
+
+  let x = event.clientX
+  let y = event.clientY
+
+  if (x + menuWidth > windowWidth) {
+    x = windowWidth - menuWidth - 8
+  }
+  if (y + menuHeight > windowHeight) {
+    y = windowHeight - menuHeight - 8
+  }
+
+  archivedContextMenuX.value = Math.max(8, x)
+  archivedContextMenuY.value = Math.max(8, y)
+  archivedContextMenuVisible.value = true
+
+  const closeHandler = () => {
+    closeArchivedContextMenu()
+    document.removeEventListener('click', closeHandler)
+    document.removeEventListener('contextmenu', closeHandler)
+    document.removeEventListener('scroll', closeHandler)
+  }
+  setTimeout(() => {
+    document.addEventListener('click', closeHandler)
+    document.addEventListener('contextmenu', closeHandler)
+    document.addEventListener('scroll', closeHandler)
+  }, 0)
+}
+
+function handleArchivedContextAction(action) {
+  const file = archivedContextFile.value
+  closeArchivedContextMenu()
+  if (!file) return
+
+  if (action === 'restore') {
+    emit('unarchiveFile', file.id)
+    return
+  }
+
+  if (action === 'delete') {
+    emit('deleteFile', file.id)
+  }
+}
+
 watch(showNewMenu, (val) => {
   if (val) {
     setTimeout(() => {
@@ -370,6 +490,14 @@ watch(showSortMenu, (val) => {
 })
 
 defineExpose({ expandToFile })
+
+onMounted(() => {
+  window.addEventListener(CLOSE_FILE_CONTEXT_MENUS_EVENT, closeArchivedContextMenu)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener(CLOSE_FILE_CONTEXT_MENUS_EVENT, closeArchivedContextMenu)
+})
 
 function expandToFile(fileId, parentFolderIds) {
   parentFolderIds.forEach((id) => expandedIds.value.add(id))
@@ -745,6 +873,88 @@ function expandToFile(fileId, parentFolderIds) {
   border-radius: 0.65rem;
   color: var(--text-primary, #f8fafc);
   background: var(--accent-glow, rgba(96, 165, 250, 0.22));
+}
+
+.fm-context-menu {
+  position: fixed;
+  z-index: 9999;
+  min-width: 150px;
+  padding: 0.45rem;
+  border-radius: 0.625rem;
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(0,0,0,0.03);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transform-origin: top left;
+}
+
+.fm-context-menu.light {
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(59, 130, 246, 0.12);
+}
+
+.fm-context-menu.dark {
+  background: rgba(21, 21, 40, 0.96);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.fm-context-item {
+  width: 100%;
+  text-align: left;
+  padding: 0.5rem 0.625rem;
+  border-radius: 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  transition: all 0.15s ease;
+  color: #334155;
+}
+
+.fm-context-menu.dark .fm-context-item {
+  color: #e2e8f0;
+}
+
+.fm-context-item:hover {
+  background: rgba(59, 130, 246, 0.08);
+  transform: translateX(2px);
+}
+
+.fm-context-menu.dark .fm-context-item:hover {
+  background: rgba(59, 130, 246, 0.15);
+}
+
+.fm-context-item.danger {
+  color: #ef4444;
+}
+
+.fm-context-item.danger:hover {
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.fm-context-item svg {
+  flex-shrink: 0;
+  opacity: 0.65;
+}
+
+.fm-context-divider {
+  height: 1px;
+  margin: 0.35rem 0;
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.context-enter-active,
+.context-leave-active {
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.context-enter-from,
+.context-leave-to {
+  opacity: 0;
+  transform: scale(0.95);
 }
 
 .fm-empty {

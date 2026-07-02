@@ -19,8 +19,14 @@
           <h3 class="confirm-title">{{ title }}</h3>
           <p class="confirm-desc">{{ message }}</p>
           <div class="confirm-actions">
-            <button class="btn btn-secondary" @click="$emit('cancel')">取消</button>
-            <button class="btn btn-danger" @click="$emit('confirm')">确认</button>
+            <button class="btn btn-secondary" @click="$emit('cancel')">{{ cancelText }}</button>
+            <button
+              class="btn"
+              :class="confirmVariant === 'primary' ? 'btn-primary' : 'btn-danger'"
+              @click="$emit('confirm')"
+            >
+              {{ confirmText }}
+            </button>
           </div>
         </div>
       </Transition>
@@ -34,7 +40,10 @@ defineProps({
   isDark: { type: Boolean, default: false },
   title: { type: String, default: '确认操作' },
   message: { type: String, default: '确定要执行此操作吗？' },
-  iconType: { type: String, default: 'warning' }
+  iconType: { type: String, default: 'warning' },
+  confirmText: { type: String, default: '确认' },
+  cancelText: { type: String, default: '取消' },
+  confirmVariant: { type: String, default: 'danger' }
 })
 
 defineEmits(['confirm', 'cancel'])
@@ -182,9 +191,21 @@ defineEmits(['confirm', 'cancel'])
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
 }
 
+.btn-primary {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+}
+
 .btn-danger:hover {
   background: linear-gradient(135deg, #dc2626, #b91c1c);
   transform: translateY(-1px);
   box-shadow: 0 6px 16px rgba(239, 68, 68, 0.3);
+}
+
+.btn-primary:hover {
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.3);
 }
 </style>

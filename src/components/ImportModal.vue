@@ -121,12 +121,26 @@
       </Transition>
     </div>
   </Transition>
+
+  <ConfirmModal
+    :visible="largeFileConfirm.visible"
+    :is-dark="isDark"
+    title="继续导入大文件？"
+    :message="largeFileConfirm.message"
+    icon-type="warning"
+    confirm-text="继续导入"
+    cancel-text="跳过"
+    confirm-variant="primary"
+    @confirm="resolveLargeFileConfirm(true)"
+    @cancel="resolveLargeFileConfirm(false)"
+  />
 </template>
 
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { readFileContent, getFileName } from '../utils/fileParser.js'
 import { getWorkspaceSummary, parseWorkspaceContent } from '../composables/useFileSystem.js'
+import ConfirmModal from './ConfirmModal.vue'
 
 const LARGE_FILE_WARNING_BYTES = 5 * 1024 * 1024
 
@@ -143,6 +157,11 @@ const importError = ref('')
 const importMode = ref('replace')
 const pendingWorkspace = ref(null)
 const pendingWorkspaceName = ref('')
+const largeFileConfirm = ref({
+  visible: false,
+  message: ''
+})
+let largeFileConfirmResolver = null
 const workspaceSummary = computed(() => (
   pendingWorkspace.value ? getWorkspaceSummary(pendingWorkspace.value) : {}
 ))
@@ -157,6 +176,7 @@ function resetState() {
   importMode.value = 'replace'
   pendingWorkspace.value = null
   pendingWorkspaceName.value = ''
+  resolveLargeFileConfirm(false)
 }
 
 function handleClose() {
@@ -186,10 +206,35 @@ function formatNumber(value) {
   return new Intl.NumberFormat().format(value)
 }
 
-function shouldReadLargeFile(file) {
+function resolveLargeFileConfirm(result) {
+  const resolver = largeFileConfirmResolver
+  largeFileConfirmResolver = null
+  largeFileConfirm.value = {
+    visible: false,
+    message: ''
+  }
+  resolver?.(result)
+}
+
+function confirmLargeFile(message) {
+  if (largeFileConfirmResolver) {
+    resolveLargeFileConfirm(false)
+  }
+
+  largeFileConfirm.value = {
+    visible: true,
+    message
+  }
+
+  return new Promise((resolve) => {
+    largeFileConfirmResolver = resolve
+  })
+}
+
+async function shouldReadLargeFile(file) {
   if (!file?.size || file.size <= LARGE_FILE_WARNING_BYTES) return true
   const size = (file.size / 1024 / 1024).toFixed(1)
-  return window.confirm(`${file.name} 有 ${size} MB，导入时可能需要一些时间，是否继续？`)
+  return confirmLargeFile(`${file.name} 有 ${size} MB，导入时可能需要一些时间，是否继续？`)
 }
 
 function handleFileSelect(e) {
@@ -210,7 +255,7 @@ async function importFiles(fileList) {
   clearWorkspaceDraft()
   
   for (const file of fileList) {
-    if (!shouldReadLargeFile(file)) continue
+    if (!(await shouldReadLargeFile(file))) continue
 
     try {
       const content = await readFileContent(file)
