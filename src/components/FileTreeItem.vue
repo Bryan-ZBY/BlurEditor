@@ -3,10 +3,11 @@
     :class="[isRenaming ? '' : 'select-none']"
     :style="{ paddingLeft: level * 12 + 'px' }"
     :draggable="!isRenaming"
-    @dragstart="handleDragStart"
-    @dragover.prevent="handleDragOver"
-    @drop="handleDrop"
-    @dragleave="handleDragLeave"
+    @dragstart.stop="handleDragStart"
+    @dragend.stop="handleDragEnd"
+    @dragover.prevent.stop="handleDragOver"
+    @drop.prevent.stop="handleDrop"
+    @dragleave.stop="handleDragLeave"
   >
     <div
       v-if="file.type === 'folder'"
@@ -14,6 +15,7 @@
       :data-file-id="file.id"
       :class="[
         isDraggingOver ? 'drag-over' : '',
+        dropPosition ? `drop-${dropPosition}` : '',
         isDark ? 'dark' : 'light'
       ]"
       @click="!isRenaming && $emit('toggle', file.id)"
@@ -73,6 +75,7 @@
       :data-file-id="file.id"
       :class="[
         isDraggingOver ? 'drag-over' : '',
+        dropPosition ? `drop-${dropPosition}` : '',
         isCurrent ? 'current' : '',
         isDark ? 'dark' : 'light'
       ]"
@@ -317,6 +320,7 @@ const emit = defineEmits([
 
 const CLOSE_FILE_PREVIEW_EVENT = 'blur-editor-close-file-previews'
 const CLOSE_FILE_CONTEXT_MENUS_EVENT = 'blur-editor-close-file-context-menus'
+const FILE_DRAG_MIME = 'application/x-blureditor-file-id'
 
 const isCurrent = computed(() => props.file.id === props.currentFileId)
 const isExpanded = computed(() => props.expandedIds.has(props.file.id))
@@ -352,6 +356,7 @@ const contextMenuX = ref(0)
 const contextMenuY = ref(0)
 const contextFile = ref(null)
 const isDraggingOver = ref(false)
+const dropPosition = ref('')
 const showMoveDialog = ref(false)
 const selectedFolderId = ref(null)
 const isRenaming = ref(false)
@@ -506,6 +511,8 @@ const isNameDuplicate = computed(() => {
 })
 
 function handleDragStart(e) {
+  e.stopPropagation()
+  e.dataTransfer.setData(FILE_DRAG_MIME, props.file.id)
   e.dataTransfer.setData('text/plain', props.file.id)
   e.dataTransfer.effectAllowed = 'move'
   e.target.style.opacity = '0.4'
@@ -518,26 +525,55 @@ function handleDragOver(e) {
   e.preventDefault()
   e.dataTransfer.dropEffect = 'move'
   isDraggingOver.value = true
+  dropPosition.value = getDropPosition(e)
 }
 
 function handleDragLeave() {
   isDraggingOver.value = false
+  dropPosition.value = ''
+}
+
+function handleDragEnd() {
+  isDraggingOver.value = false
+  dropPosition.value = ''
 }
 
 function handleDrop(e) {
   e.preventDefault()
+  e.stopPropagation()
   isDraggingOver.value = false
-  const draggedId = e.dataTransfer.getData('text/plain')
+  const draggedId = e.dataTransfer.getData(FILE_DRAG_MIME)
   if (draggedId && draggedId !== props.file.id) {
-    const rowEl = e.currentTarget.querySelector(':scope > .ft-item')
-    const rect = rowEl?.getBoundingClientRect() || e.currentTarget.getBoundingClientRect()
-    const dropAfter = e.clientY > rect.top + rect.height / 2
+    const position = dropPosition.value || getDropPosition(e)
+    dropPosition.value = ''
+
+    if (position === 'inside' && props.file.type === 'folder') {
+      if (!isExpanded.value) {
+        emit('toggle', props.file.id)
+      }
+      emit('move', { fileId: draggedId, newParentId: props.file.id })
+      return
+    }
+
+    const dropAfter = position === 'after'
     emit('reorder', {
       fileId: draggedId,
       targetParentId: props.file.parentId,
       targetIndex: props.index + (dropAfter ? 1 : 0)
     })
   }
+  dropPosition.value = ''
+}
+
+function getDropPosition(e) {
+  const rowEl = e.currentTarget.querySelector(':scope > .ft-item')
+  const rect = rowEl?.getBoundingClientRect() || e.currentTarget.getBoundingClientRect()
+  const offsetY = e.clientY - rect.top
+  const edgeSize = Math.min(10, Math.max(6, rect.height * 0.28))
+
+  if (offsetY <= edgeSize) return 'before'
+  if (offsetY >= rect.height - edgeSize) return 'after'
+  return props.file.type === 'folder' ? 'inside' : (offsetY > rect.height / 2 ? 'after' : 'before')
 }
 
 function formatSize(bytes) {
@@ -635,6 +671,31 @@ onBeforeUnmount(() => {
   background: rgba(59, 130, 246, 0.15) !important;
   border: 1px dashed var(--accent-indigo, #3b82f6);
   box-shadow: 0 0 12px var(--accent-glow, rgba(59,130,246,0.2));
+}
+
+.ft-item.drop-before::before,
+.ft-item.drop-after::after {
+  content: '';
+  position: absolute;
+  left: 0.55rem;
+  right: 0.55rem;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--accent-indigo, #3b82f6);
+  box-shadow: 0 0 8px var(--accent-glow, rgba(59,130,246,0.24));
+}
+
+.ft-item.drop-before::before {
+  top: -1px;
+}
+
+.ft-item.drop-after::after {
+  bottom: -1px;
+}
+
+.ft-item.drop-inside {
+  background: rgba(16, 185, 129, 0.12) !important;
+  border-color: rgba(16, 185, 129, 0.45);
 }
 
 /* 展开箭头 */

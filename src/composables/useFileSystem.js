@@ -3,12 +3,19 @@ import { computed, ref } from 'vue'
 const STORAGE_KEY = 'file_system_v1'
 const CURRENT_FILE_KEY = 'current_file_id'
 const SORT_MODE_KEY = 'file_sort_mode'
+const SORT_DIRECTION_KEY = 'file_sort_direction'
 const IMPORT_BACKUP_KEY = 'file_system_backup_before_import_v1'
 const MAX_RECENT_FILES = 12
 const WORKSPACE_SCHEMA = 'blureditor-workspace'
 const WORKSPACE_VERSION = 1
 const WORKSPACE_APP = 'blureditor'
-const VALID_SORT_MODES = new Set(['name', 'date', 'size', 'manual'])
+const VALID_SORT_MODES = new Set(['name', 'date', 'size'])
+const VALID_SORT_DIRECTIONS = new Set(['asc', 'desc'])
+const DEFAULT_SORT_DIRECTIONS = {
+  name: 'asc',
+  date: 'desc',
+  size: 'desc'
+}
 
 function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).substring(2, 9)
@@ -64,6 +71,14 @@ function normalizeSortMode(mode) {
   return VALID_SORT_MODES.has(mode) ? mode : 'name'
 }
 
+function getDefaultSortDirection(mode) {
+  return DEFAULT_SORT_DIRECTIONS[normalizeSortMode(mode)] || 'asc'
+}
+
+function normalizeSortDirection(direction, mode = 'name') {
+  return VALID_SORT_DIRECTIONS.has(direction) ? direction : getDefaultSortDirection(mode)
+}
+
 function cloneFileForWorkspace(file) {
   return {
     id: file.id,
@@ -81,7 +96,7 @@ function cloneFileForWorkspace(file) {
   }
 }
 
-function createWorkspaceData(fileList, selectedFileId, selectedSortMode, options = {}) {
+function createWorkspaceData(fileList, selectedFileId, selectedSortMode, selectedSortDirection, options = {}) {
   const includeArchived = options.includeArchived !== false
   const files = (Array.isArray(fileList) ? fileList : [])
     .filter((file) => includeArchived || !file.isArchived)
@@ -105,6 +120,7 @@ function createWorkspaceData(fileList, selectedFileId, selectedSortMode, options
     exportedAt: Date.now(),
     includeArchived,
     sortMode: normalizeSortMode(selectedSortMode),
+    sortDirection: normalizeSortDirection(selectedSortDirection, selectedSortMode),
     currentFileId: currentFile?.id || null,
     files
   }
@@ -148,6 +164,7 @@ export function getWorkspaceSummary(workspace) {
     exportedAt: Number(workspace.exportedAt) || null,
     includeArchived: Boolean(workspace.includeArchived),
     sortMode: normalizeSortMode(workspace.sortMode),
+    sortDirection: normalizeSortDirection(workspace.sortDirection, workspace.sortMode),
     totalCount: rawFiles.length,
     fileCount,
     folderCount,
@@ -206,7 +223,8 @@ function normalizeWorkspaceData(workspace) {
   return {
     files,
     currentFileId: requestedCurrentFile?.id || firstFile?.id || null,
-    sortMode: normalizeSortMode(workspace.sortMode)
+    sortMode: normalizeSortMode(workspace.sortMode),
+    sortDirection: normalizeSortDirection(workspace.sortDirection, workspace.sortMode)
   }
 }
 
@@ -287,6 +305,9 @@ function loadFromStorage() {
         if (restored.sortMode) {
           localStorage.setItem(SORT_MODE_KEY, restored.sortMode)
         }
+        if (restored.sortDirection) {
+          localStorage.setItem(SORT_DIRECTION_KEY, restored.sortDirection)
+        }
         return restored
       }
     }
@@ -317,6 +338,7 @@ function saveToStorage(files, currentFileId) {
 }
 
 const sortMode = ref(normalizeSortMode(localStorage.getItem(SORT_MODE_KEY)))
+const sortDirection = ref(normalizeSortDirection(localStorage.getItem(SORT_DIRECTION_KEY), sortMode.value))
 
 export function useFileSystem() {
   const saved = loadFromStorage()
@@ -330,6 +352,10 @@ export function useFileSystem() {
   if (saved?.sortMode) {
     sortMode.value = saved.sortMode
     localStorage.setItem(SORT_MODE_KEY, saved.sortMode)
+  }
+  if (saved?.sortDirection) {
+    sortDirection.value = normalizeSortDirection(saved.sortDirection, saved.sortMode)
+    localStorage.setItem(SORT_DIRECTION_KEY, sortDirection.value)
   }
 
   if (!currentFileId.value || !files.value.some((f) => f.id === currentFileId.value && f.type === 'file')) {
@@ -377,7 +403,7 @@ export function useFileSystem() {
   }
 
   function backupCurrentWorkspace(reason = 'import') {
-    const workspace = createWorkspaceData(files.value, currentFileId.value, sortMode.value, { includeArchived: true })
+    const workspace = createWorkspaceData(files.value, currentFileId.value, sortMode.value, sortDirection.value, { includeArchived: true })
     const backup = {
       createdAt: Date.now(),
       reason,
@@ -459,6 +485,7 @@ export function useFileSystem() {
       files: files.value,
       currentFileId: currentFileId.value,
       sortMode: sortMode.value,
+      sortDirection: sortDirection.value,
       importedCount: importedFiles.length
     }
   }
@@ -466,15 +493,14 @@ export function useFileSystem() {
   function replaceWorkspace(restored) {
     files.value = restored.files
     currentFileId.value = restored.currentFileId
-    if (restored.sortMode) {
-      setSortMode(restored.sortMode)
-    }
+    setSortMode(restored.sortMode, { toggleSame: false, direction: restored.sortDirection })
     persist()
 
     return {
       files: files.value,
       currentFileId: currentFileId.value,
       sortMode: sortMode.value,
+      sortDirection: sortDirection.value,
       importedCount: restored.files.length
     }
   }
@@ -513,7 +539,7 @@ export function useFileSystem() {
   }
 
   function exportWorkspace(options = {}) {
-    const workspace = createWorkspaceData(files.value, currentFileId.value, sortMode.value, {
+    const workspace = createWorkspaceData(files.value, currentFileId.value, sortMode.value, sortDirection.value, {
       includeArchived: options.includeArchived !== false
     })
     const date = new Date(workspace.exportedAt).toISOString().slice(0, 10)
@@ -676,8 +702,15 @@ export function useFileSystem() {
     if (file.type === 'folder' && isFolderDescendant(targetParentId, file.id)) return false
     if (file.parentId !== targetParentId && hasDuplicateName(targetParentId, file.name, file.id)) return false
 
+    const originalParentId = file.parentId
+    const originalIndex = originalParentId === targetParentId
+      ? getActiveSiblings(targetParentId).findIndex((item) => item.id === fileId)
+      : -1
     const siblings = getActiveSiblings(targetParentId).filter((f) => f.id !== fileId)
-    const nextIndex = Math.max(0, Math.min(Number(targetIndex) || 0, siblings.length))
+    let nextIndex = Math.max(0, Math.min(Number(targetIndex) || 0, siblings.length))
+    if (originalIndex >= 0 && originalIndex < nextIndex) {
+      nextIndex -= 1
+    }
     file.parentId = targetParentId
     file.updatedAt = Date.now()
 
@@ -867,28 +900,52 @@ export function useFileSystem() {
     persist()
   }
 
-  function setSortMode(mode) {
+  function setSortMode(mode, options = {}) {
     const nextMode = normalizeSortMode(mode)
+    const hasDirection = Object.prototype.hasOwnProperty.call(options, 'direction')
+    if (nextMode === sortMode.value) {
+      if (options.toggleSame === false) {
+        sortDirection.value = hasDirection
+          ? normalizeSortDirection(options.direction, nextMode)
+          : normalizeSortDirection(sortDirection.value, nextMode)
+        localStorage.setItem(SORT_MODE_KEY, nextMode)
+        localStorage.setItem(SORT_DIRECTION_KEY, sortDirection.value)
+        return
+      }
+      setSortDirection(sortDirection.value === 'asc' ? 'desc' : 'asc')
+      return
+    }
     sortMode.value = nextMode
+    sortDirection.value = hasDirection
+      ? normalizeSortDirection(options.direction, nextMode)
+      : getDefaultSortDirection(nextMode)
     localStorage.setItem(SORT_MODE_KEY, nextMode)
+    localStorage.setItem(SORT_DIRECTION_KEY, sortDirection.value)
+  }
+
+  function setSortDirection(direction) {
+    const nextDirection = normalizeSortDirection(direction, sortMode.value)
+    sortDirection.value = nextDirection
+    localStorage.setItem(SORT_DIRECTION_KEY, nextDirection)
   }
 
   function getSortedFiles(fileList) {
     const sorted = [...fileList]
+    const direction = sortDirection.value === 'desc' ? -1 : 1
     switch (sortMode.value) {
       case 'name':
         return sorted.sort((a, b) => {
           if (a.type === 'folder' && b.type !== 'folder') return -1
           if (a.type !== 'folder' && b.type === 'folder') return 1
-          return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+          return direction * a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
         })
       case 'date':
-        return sorted.sort((a, b) => b.updatedAt - a.updatedAt)
+        return sorted.sort((a, b) => direction * (a.updatedAt - b.updatedAt))
       case 'size':
         return sorted.sort((a, b) => {
           if (a.type === 'folder' && b.type !== 'folder') return -1
           if (a.type !== 'folder' && b.type === 'folder') return 1
-          return (b.content?.length || 0) - (a.content?.length || 0)
+          return direction * ((a.content?.length || 0) - (b.content?.length || 0))
         })
       default:
         return sorted.sort((a, b) => a.order - b.order)
@@ -913,6 +970,7 @@ export function useFileSystem() {
     favoriteFiles,
     recentFiles,
     sortMode,
+    sortDirection,
     importBackupInfo,
     getChildren,
     getSortedFiles,
@@ -937,6 +995,7 @@ export function useFileSystem() {
     getFilePath,
     getParentFolderIds,
     setSortMode,
+    setSortDirection,
     addFileTag,
     removeFileTag,
     getFileTags,

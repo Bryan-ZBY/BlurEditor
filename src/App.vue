@@ -22,6 +22,7 @@
           :get-children="getChildren"
           :is-dark="isDark"
           :sort-mode="fileSystem.sortMode.value"
+          :sort-direction="fileSystem.sortDirection.value"
           :get-sorted-files="fileSystem.getSortedFiles"
           @select-file="handleSelectFile"
           @create-file="handleCreateFile"
@@ -577,10 +578,9 @@ function handleMoveFile({ fileId, newParentId }) {
 function handleReorderFile(payload) {
   const reordered = fileSystem.reorderFile(payload.fileId, payload.targetParentId, payload.targetIndex)
   if (reordered) {
-    fileSystem.setSortMode('manual')
     return
   }
-  showAppAlert('无法排序到该位置：可能存在同名项目，或目标位置不可用。', 'warning')
+  showAppAlert('无法移动到该位置：可能存在同名项目，或目标位置不可用。', 'warning')
 }
 
 function handleToggleFavorite({ fileId }) {

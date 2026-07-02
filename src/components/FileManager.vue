@@ -33,7 +33,7 @@
           @click="showSortMenu = !showSortMenu"
           class="fm-action-btn"
           :class="{ active: showSortMenu }"
-          title="排序"
+          :title="sortButtonTitle"
         >
           <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" d="M3 4h13M3 16h13M16 4l7 7m0 0l-7 7m7-7H3" />
@@ -81,9 +81,12 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M7 12h10M10 16h4" />
           </svg>
           <span>{{ option.label }}</span>
-          <svg v-if="sortMode === option.value" xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 ml-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-          </svg>
+          <span v-if="sortMode === option.value" class="fm-sort-direction">
+            {{ sortDirectionLabel }}
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" :class="{ desc: sortDirection === 'desc' }" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14m0 0l-5-5m5 5l5-5"/>
+            </svg>
+          </span>
         </button>
       </div>
     </Transition>
@@ -127,7 +130,13 @@
       </div>
     </div>
 
-    <div class="fm-body custom-scrollbar">
+    <div
+      class="fm-body custom-scrollbar"
+      :class="{ 'root-drop-over': isRootDragOver }"
+      @dragover.prevent="handleRootDragOver"
+      @dragleave="handleRootDragLeave"
+      @drop.prevent="handleRootDrop"
+    >
       <template v-if="searchText">
         <div v-if="searchMatches.length === 0" class="fm-empty">
           <div class="fm-empty-icon">
@@ -290,6 +299,7 @@ const props = defineProps({
   getChildren: Function,
   isDark: Boolean,
   sortMode: String,
+  sortDirection: { type: String, default: 'asc' },
   getSortedFiles: Function
 })
 
@@ -317,6 +327,7 @@ const showSortMenu = ref(false)
 const showFavorites = ref(true)
 const searchText = ref('')
 const expandedIds = ref(new Set())
+const isRootDragOver = ref(false)
 const archivedContextMenuVisible = ref(false)
 const archivedContextMenuX = ref(0)
 const archivedContextMenuY = ref(0)
@@ -324,13 +335,17 @@ const archivedContextFile = ref(null)
 const propertyFile = ref(null)
 const CLOSE_FILE_PREVIEW_EVENT = 'blur-editor-close-file-previews'
 const CLOSE_FILE_CONTEXT_MENUS_EVENT = 'blur-editor-close-file-context-menus'
+const FILE_DRAG_MIME = 'application/x-blureditor-file-id'
 
 const sortOptions = [
-  { value: 'manual', label: '手动排序', icon: 'manual' },
   { value: 'name', label: '按名称', icon: 'name' },
   { value: 'date', label: '按时间', icon: 'date' },
   { value: 'size', label: '按大小', icon: 'size' }
 ]
+
+const activeSortOption = computed(() => sortOptions.find((option) => option.value === props.sortMode) || sortOptions[0])
+const sortDirectionLabel = computed(() => (props.sortDirection === 'desc' ? '逆序' : '正序'))
+const sortButtonTitle = computed(() => `排序：${activeSortOption.value.label}，${sortDirectionLabel.value}`)
 
 const displayedFiles = computed(() => {
   if (props.getSortedFiles) return props.getSortedFiles(props.rootFiles || [])
@@ -377,8 +392,9 @@ function createNewFolder() {
 }
 
 function handleSort(mode) {
+  const isCurrentMode = mode === props.sortMode
   emit('setSortMode', mode)
-  showSortMenu.value = false
+  if (!isCurrentMode) showSortMenu.value = false
 }
 
 function handleQuickSelect(fileId) {
@@ -387,6 +403,29 @@ function handleQuickSelect(fileId) {
 
 function handleReorder(payload) {
   emit('reorderFile', payload)
+}
+
+function handleRootDragOver(event) {
+  if (!Array.from(event.dataTransfer?.types || []).includes(FILE_DRAG_MIME)) return
+  event.dataTransfer.dropEffect = 'move'
+  isRootDragOver.value = true
+}
+
+function handleRootDragLeave(event) {
+  if (event.currentTarget?.contains(event.relatedTarget)) return
+  isRootDragOver.value = false
+}
+
+function handleRootDrop(event) {
+  isRootDragOver.value = false
+  const fileId = event.dataTransfer?.getData(FILE_DRAG_MIME)
+  if (!fileId) return
+
+  emit('reorderFile', {
+    fileId,
+    targetParentId: null,
+    targetIndex: displayedFiles.value.length
+  })
 }
 
 function closeFileProperties() {
@@ -635,6 +674,25 @@ function expandToFile(fileId, parentFolderIds) {
   border-color: var(--accent-indigo, rgba(96, 165, 250, 0.25));
 }
 
+.fm-sort-direction {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--accent-indigo, #60a5fa);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.fm-sort-direction svg {
+  color: currentColor;
+  transition: transform 0.16s ease;
+}
+
+.fm-sort-direction svg.desc {
+  transform: rotate(180deg);
+}
+
 .fm-toolbar {
   display: flex;
   align-items: center;
@@ -722,6 +780,14 @@ function expandToFile(fileId, parentFolderIds) {
   min-height: 0;
   padding: 0.25rem 0;
   overflow-y: auto;
+  border: 1px solid transparent;
+  border-radius: 0.6rem;
+  transition: background 0.16s ease, border-color 0.16s ease;
+}
+
+.fm-body.root-drop-over {
+  background: rgba(59, 130, 246, 0.06);
+  border-color: rgba(59, 130, 246, 0.24);
 }
 
 .fm-quick-list {
@@ -762,8 +828,9 @@ function expandToFile(fileId, parentFolderIds) {
 }
 
 .quick-dot.recent {
-  background: #22c55e;
-  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.16);
+  background: var(--text-muted, #94a3b8);
+  box-shadow: 0 0 0 3px var(--hover-bg, rgba(148, 163, 184, 0.1));
+  opacity: 0.78;
 }
 
 .fm-search-results {
