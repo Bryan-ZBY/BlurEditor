@@ -317,6 +317,7 @@
                   aria-label="Markdown 预览"
                   v-html="previewContent"
                   :style="previewTypographyStyle"
+                  @wheel="handlePreviewWheel"
                   @scroll="handlePreviewScroll"
                 ></div>
               </div>
@@ -718,6 +719,11 @@ function handlePreviewScroll(e) {
       activeHeadingId.value = found
     }
   }
+}
+
+function handlePreviewWheel() {
+  stopPreviewHoldScroll()
+  cancelPreviewScrollAnimation()
 }
 
 const togglePreviewMode = () => {
@@ -1172,6 +1178,8 @@ function handlePreviewVimKey(event = {}) {
   }
 
   if (isSpaceKey(rawKey, event.code)) {
+    stopPreviewHoldScroll()
+    cancelPreviewScrollAnimation()
     return scrollPreviewBy((isShift ? -1 : 1) * preview.clientHeight * 0.88, 190)
   }
 
