@@ -752,6 +752,76 @@ const toggleSplitMode = () => {
 
 let mermaidRenderCount = 0
 
+function getNumberOrNaN(value) {
+  const valueString = String(value || '').trim()
+  const parsed = Number.parseFloat(valueString)
+  return Number.isFinite(parsed) ? parsed : NaN
+}
+
+function getMermaidSvgSize(svg) {
+  if (!svg) return null
+
+  const viewBox = svg.getAttribute('viewBox')
+  if (viewBox) {
+    const parts = viewBox.split(/\s+/).map((item) => Number.parseFloat(item)).filter((item) => Number.isFinite(item))
+    if (parts.length === 4 && parts[2] > 0 && parts[3] > 0) {
+      return { width: parts[2], height: parts[3] }
+    }
+  }
+
+  const width = getNumberOrNaN(svg.getAttribute('width'))
+  const height = getNumberOrNaN(svg.getAttribute('height'))
+  if (Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0) {
+    return { width, height }
+  }
+
+  const box = svg.getBoundingClientRect()
+  if (box.width > 0 && box.height > 0) {
+    return { width: box.width, height: box.height }
+  }
+
+  return null
+}
+
+function fitMermaidToContainer(wrapper) {
+  if (!wrapper) return
+
+  const chart = wrapper.querySelector('.mermaid-chart')
+  const svg = chart?.querySelector('svg')
+  if (!chart || !svg) return
+
+  const size = getMermaidSvgSize(svg)
+  if (!size) return
+
+  const containerWidth = wrapper.clientWidth
+  const containerHeight = wrapper.clientHeight
+  if (!containerWidth || !containerHeight || size.width <= 0 || size.height <= 0) return
+
+  const safeW = Math.max(1, size.width)
+  const safeH = Math.max(1, size.height)
+  const widthScale = containerWidth / safeW
+  const heightScale = containerHeight / safeH
+  const scale = Math.min(1, widthScale, heightScale)
+
+  const targetWidth = Math.max(1, Math.round(size.width * scale))
+  const targetHeight = Math.max(1, Math.round(size.height * scale))
+
+  chart.style.width = `${targetWidth}px`
+  chart.style.height = `${targetHeight}px`
+  svg.style.width = `${targetWidth}px`
+  svg.style.height = `${targetHeight}px`
+  svg.style.maxWidth = '100%'
+  svg.style.maxHeight = '100%'
+}
+
+function fitAllMermaidCharts() {
+  const previewEl = previewRef.value
+  if (!previewEl) return
+
+  const wrappers = previewEl.querySelectorAll('.mermaid-wrapper')
+  wrappers.forEach((wrapper) => fitMermaidToContainer(wrapper))
+}
+
 async function renderMermaid() {
   const previewEl = previewRef.value
   if (!previewEl) return
@@ -774,6 +844,10 @@ async function renderMermaid() {
       block.parentNode.insertBefore(wrapper, block)
       block.style.display = 'none'
       block.setAttribute('data-processed', 'true')
+
+      requestAnimationFrame(() => {
+        fitMermaidToContainer(wrapper)
+      })
     } catch (e) {
       const errorDiv = document.createElement('div')
       errorDiv.className = 'mermaid-error'
@@ -783,6 +857,20 @@ async function renderMermaid() {
     }
   }
 }
+
+const mermaidResizeHandler = () => {
+  requestAnimationFrame(() => {
+    fitAllMermaidCharts()
+  })
+}
+
+onMounted(() => {
+  window.addEventListener('resize', mermaidResizeHandler)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', mermaidResizeHandler)
+})
 
 watch(
   () => [props.content, props.isPreviewMode, props.isFullscreenPreview, props.isDark],
@@ -2285,9 +2373,12 @@ defineExpose({ editorRef, splitEditorRef, toggleOutline, scrollToLine, scrollPre
   background: var(--preview-bg, #fafafa);
   border: 1px solid var(--border-color, #e5e7eb);
   border-radius: 12px;
-  overflow-x: auto;
-  overflow-y: auto;
+  overflow: hidden;
+  max-height: 80vh;
   min-height: 120px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
@@ -2296,13 +2387,17 @@ defineExpose({ editorRef, splitEditorRef, toggleOutline, scrollToLine, scrollPre
   justify-content: center;
   align-items: center;
   min-height: 80px;
+  width: 100%;
+  max-height: calc(80vh - 3rem);
 }
 
 :deep(.mermaid-chart svg) {
-  max-width: none !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
   width: auto !important;
   height: auto !important;
-  min-width: 100%;
+  object-fit: contain;
+  transform-origin: center center;
 }
 
 :deep(.mermaid-error) {

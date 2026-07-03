@@ -649,85 +649,85 @@
 }
 
 [data-theme="lightgoldenrodyellow"] {
-  --editor-bg: #080400;
-  --editor-bg-split: #040300;
-  --editor-text: #fef3b5;
-  --editor-placeholder: rgba(253, 230, 138, 0.35);
+  --editor-bg: #02030d;
+  --editor-bg-split: #01020b;
+  --editor-text: #f5faff;
+  --editor-placeholder: rgba(147, 197, 253, 0.35);
 
-  --toolbar-bg: rgba(10, 6, 2, 0.98);
-  --toolbar-border: rgba(252, 211, 77, 0.2);
-  --top-bar-bg: rgba(7, 5, 2, 0.98);
-  --top-bar-border: rgba(252, 211, 77, 0.2);
-  --menu-bg: #0f0902;
-  --menu-border: rgba(252, 211, 77, 0.18);
-  --menu-hover: rgba(252, 211, 77, 0.1);
-  --icon-btn-bg: rgba(12, 8, 3, 0.72);
-  --icon-btn-hover: rgba(252, 211, 77, 0.12);
-  --icon-btn-active: rgba(252, 211, 77, 0.18);
-  --divider: rgba(252, 211, 77, 0.18);
+  --toolbar-bg: rgba(7, 12, 30, 0.98);
+  --toolbar-border: rgba(167, 139, 250, 0.4);
+  --top-bar-bg: rgba(4, 8, 22, 0.98);
+  --top-bar-border: rgba(96, 165, 250, 0.4);
+  --menu-bg: #090e22;
+  --menu-border: rgba(167, 139, 250, 0.24);
+  --menu-hover: rgba(129, 140, 248, 0.14);
+  --icon-btn-bg: rgba(9, 16, 36, 0.72);
+  --icon-btn-hover: rgba(124, 58, 237, 0.2);
+  --icon-btn-active: rgba(96, 165, 250, 0.3);
+  --divider: rgba(129, 140, 248, 0.24);
 
-  --tabs-bg: rgba(10, 7, 2, 0.94);
-  --tabs-border: rgba(252, 211, 77, 0.2);
-  --tab-bg: rgba(8, 6, 3, 0.66);
-  --tab-active-bg: rgba(252, 211, 77, 0.14);
-  --tab-text: #a8a29e;
-  --tab-active-text: #fde047;
-  --tab-hover-bg: rgba(252, 211, 77, 0.09);
+  --tabs-bg: rgba(7, 12, 30, 0.94);
+  --tabs-border: rgba(124, 58, 237, 0.3);
+  --tab-bg: rgba(8, 14, 34, 0.66);
+  --tab-active-bg: rgba(147, 197, 253, 0.24);
+  --tab-text: #93c5fd;
+  --tab-active-text: #eff6ff;
+  --tab-hover-bg: rgba(129, 140, 248, 0.18);
 
-  --outline-bg: #080400;
-  --outline-border: rgba(252, 211, 77, 0.2);
-  --outline-text: #a8a29e;
-  --outline-text-hover: #f3f4f6;
-  --outline-active: #fef9c3;
-  --outline-item-hover: rgba(252, 211, 77, 0.1);
-  --outline-item-active: rgba(252, 211, 77, 0.16);
-  --outline-glow: rgba(180, 83, 9, 0.25);
-  --fm-archive-bg: rgba(30, 24, 16, 0.55);
+  --outline-bg: #050b1f;
+  --outline-border: rgba(129, 140, 248, 0.28);
+  --outline-text: #94a3b8;
+  --outline-text-hover: #f8fafc;
+  --outline-active: #38bdf8;
+  --outline-item-hover: rgba(96, 165, 250, 0.2);
+  --outline-item-active: rgba(129, 140, 248, 0.24);
+  --outline-glow: rgba(96, 165, 250, 0.44);
+  --fm-archive-bg: rgba(6, 10, 24, 0.62);
 
-  --preview-bg: #080400;
-  --preview-toolbar-bg: rgba(7, 5, 2, 0.98);
-  --preview-toolbar-border: rgba(252, 211, 77, 0.16);
+  --preview-bg: #020816;
+  --preview-toolbar-bg: rgba(4, 8, 22, 0.98);
+  --preview-toolbar-border: rgba(129, 140, 248, 0.22);
 
-  --btn-secondary-bg: rgba(18, 13, 5, 0.7);
-  --btn-secondary-bg-hover: rgba(26, 18, 6, 0.8);
-  --btn-secondary-border: rgba(252, 211, 77, 0.22);
-  --btn-secondary-text: #fde68a;
-  --btn-primary-bg: linear-gradient(135deg, #ca8a04 0%, #b45309 100%);
-  --btn-primary-bg-hover: linear-gradient(135deg, #eab308 0%, #ca8a04 100%);
-  --btn-primary-text: #1f2937;
+  --btn-secondary-bg: rgba(17, 24, 39, 0.74);
+  --btn-secondary-bg-hover: rgba(30, 41, 59, 0.88);
+  --btn-secondary-border: rgba(129, 140, 248, 0.38);
+  --btn-secondary-text: #bae6fd;
+  --btn-primary-bg: linear-gradient(135deg, #4f46e5 0%, #2563eb 45%, #8b5cf6 100%);
+  --btn-primary-bg-hover: linear-gradient(135deg, #8b5cf6 0%, #3b82f6 45%, #a78bfa 100%);
+  --btn-primary-text: #ffffff;
 
-  --text-primary: #fff4c2;
-  --text-secondary: #d6d3d1;
-  --text-muted: #b0a18a;
+  --text-primary: #e2e8f0;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
 
-  --border-color: rgba(252, 211, 77, 0.22);
-  --border-color-strong: rgba(252, 211, 77, 0.35);
+  --border-color: rgba(129, 140, 248, 0.26);
+  --border-color-strong: rgba(45, 212, 191, 0.44);
 
   --scrollbar-track: transparent;
-  --scrollbar-thumb: rgba(252, 211, 77, 0.24);
-  --scrollbar-thumb-hover: rgba(252, 211, 77, 0.44);
-  --scrollbar-glow: rgba(252, 211, 77, 0.24);
+  --scrollbar-thumb: rgba(124, 58, 237, 0.26);
+  --scrollbar-thumb-hover: rgba(96, 165, 250, 0.5);
+  --scrollbar-glow: rgba(96, 165, 250, 0.34);
 
-  --dialog-bg: #110b04;
-  --dialog-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(252, 211, 77, 0.1);
+  --dialog-bg: #070c1a;
+  --dialog-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.58), 0 0 0 1px rgba(96, 165, 250, 0.24);
 
-  --input-bg: rgba(18, 13, 4, 0.7);
-  --input-border: rgba(252, 211, 77, 0.2);
-  --input-text: #fde68a;
-  --input-placeholder: #a8a29e;
+  --input-bg: rgba(6, 11, 26, 0.72);
+  --input-border: rgba(129, 140, 248, 0.24);
+  --input-text: #e2e8f0;
+  --input-placeholder: rgba(148, 163, 184, 0.8);
 
-  --hover-bg: rgba(252, 211, 77, 0.04);
-  --hover-bg-strong: rgba(252, 211, 77, 0.1);
+  --hover-bg: rgba(37, 99, 235, 0.08);
+  --hover-bg-strong: rgba(59, 130, 246, 0.18);
 
-  --glass-bg: rgba(8, 5, 2, 0.86);
-  --glass-border: rgba(252, 211, 77, 0.2);
+  --glass-bg: rgba(8, 12, 24, 0.84);
+  --glass-border: rgba(129, 140, 248, 0.28);
   --glass-backdrop: blur(16px) saturate(1.2);
 
-  --accent-indigo: #facc15;
-  --accent-purple: #ca8a04;
-  --accent-blue: #eab308;
-  --accent-cyan: #f97316;
-  --accent-glow: rgba(250, 204, 21, 0.32);
+  --accent-indigo: #c4b5fd;
+  --accent-purple: #a855f7;
+  --accent-blue: #60a5fa;
+  --accent-cyan: #60a5fa;
+  --accent-glow: rgba(37, 99, 235, 0.44);
 }
 
 [data-theme="lightgrey"] {
@@ -813,85 +813,85 @@
 }
 
 [data-theme="lavender"] {
-  --editor-bg: #07030d;
-  --editor-bg-split: #030109;
-  --editor-text: #f4edff;
-  --editor-placeholder: rgba(216, 180, 254, 0.35);
+  --editor-bg: #05060f;
+  --editor-bg-split: #02030a;
+  --editor-text: #eaf0ff;
+  --editor-placeholder: rgba(129, 140, 248, 0.35);
 
-  --toolbar-bg: rgba(4, 3, 8, 0.97);
-  --toolbar-border: rgba(167, 139, 250, 0.24);
-  --top-bar-bg: rgba(5, 4, 9, 0.98);
-  --top-bar-border: rgba(167, 139, 250, 0.26);
-  --menu-bg: #0b0421;
-  --menu-border: rgba(167, 139, 250, 0.22);
-  --menu-hover: rgba(167, 139, 250, 0.12);
-  --icon-btn-bg: rgba(8, 5, 22, 0.7);
-  --icon-btn-hover: rgba(167, 139, 250, 0.2);
-  --icon-btn-active: rgba(192, 132, 252, 0.28);
-  --divider: rgba(167, 139, 250, 0.2);
+  --toolbar-bg: rgba(7, 10, 22, 0.98);
+  --toolbar-border: rgba(129, 140, 248, 0.28);
+  --top-bar-bg: rgba(5, 8, 18, 0.98);
+  --top-bar-border: rgba(56, 189, 248, 0.28);
+  --menu-bg: #090c1b;
+  --menu-border: rgba(129, 140, 248, 0.22);
+  --menu-hover: rgba(129, 140, 248, 0.12);
+  --icon-btn-bg: rgba(7, 10, 22, 0.75);
+  --icon-btn-hover: rgba(129, 140, 248, 0.2);
+  --icon-btn-active: rgba(56, 189, 248, 0.28);
+  --divider: rgba(129, 140, 248, 0.22);
 
-  --tabs-bg: rgba(4, 3, 8, 0.94);
-  --tabs-border: rgba(167, 139, 250, 0.24);
-  --tab-bg: rgba(8, 5, 22, 0.72);
-  --tab-active-bg: rgba(167, 139, 250, 0.16);
-  --tab-text: #a78bfa;
-  --tab-active-text: #faf5ff;
-  --tab-hover-bg: rgba(167, 139, 250, 0.12);
+  --tabs-bg: rgba(7, 10, 22, 0.94);
+  --tabs-border: rgba(129, 140, 248, 0.24);
+  --tab-bg: rgba(13, 17, 32, 0.68);
+  --tab-active-bg: rgba(129, 140, 248, 0.18);
+  --tab-text: #94a3b8;
+  --tab-active-text: #e2e8f0;
+  --tab-hover-bg: rgba(129, 140, 248, 0.12);
 
-  --outline-bg: #04020b;
-  --outline-border: rgba(167, 139, 250, 0.28);
-  --outline-text: #9ca3af;
-  --outline-text-hover: #f3f4f6;
-  --outline-active: #c4b5fd;
-  --outline-item-hover: rgba(167, 139, 250, 0.16);
-  --outline-item-active: rgba(167, 139, 250, 0.24);
-  --outline-glow: rgba(196, 181, 253, 0.32);
-  --fm-archive-bg: rgba(4, 2, 14, 0.64);
+  --outline-bg: #05080f;
+  --outline-border: rgba(129, 140, 248, 0.28);
+  --outline-text: #94a3b8;
+  --outline-text-hover: #f8fafc;
+  --outline-active: #60a5fa;
+  --outline-item-hover: rgba(56, 189, 248, 0.16);
+  --outline-item-active: rgba(129, 140, 248, 0.24);
+  --outline-glow: rgba(96, 165, 250, 0.4);
+  --fm-archive-bg: rgba(4, 6, 12, 0.66);
 
-  --preview-bg: #080314;
-  --preview-toolbar-bg: rgba(5, 3, 10, 0.98);
-  --preview-toolbar-border: rgba(167, 139, 250, 0.24);
+  --preview-bg: #070b14;
+  --preview-toolbar-bg: rgba(5, 8, 16, 0.98);
+  --preview-toolbar-border: rgba(129, 140, 248, 0.24);
 
-  --btn-secondary-bg: rgba(28, 10, 70, 0.62);
-  --btn-secondary-bg-hover: rgba(44, 16, 102, 0.78);
-  --btn-secondary-border: rgba(192, 132, 252, 0.3);
-  --btn-secondary-text: #ddd6fe;
-  --btn-primary-bg: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);
-  --btn-primary-bg-hover: linear-gradient(135deg, #c4b5fd 0%, #a855f7 100%);
-  --btn-primary-text: #1e1b4b;
+  --btn-secondary-bg: rgba(17, 24, 39, 0.66);
+  --btn-secondary-bg-hover: rgba(30, 41, 59, 0.8);
+  --btn-secondary-border: rgba(129, 140, 248, 0.34);
+  --btn-secondary-text: #cbd5f5;
+  --btn-primary-bg: linear-gradient(135deg, #6366f1 0%, #06b6d4 45%, #8b5cf6 100%);
+  --btn-primary-bg-hover: linear-gradient(135deg, #818cf8 0%, #22d3ee 45%, #a78bfa 100%);
+  --btn-primary-text: #eff6ff;
 
-  --text-primary: #f5f3ff;
-  --text-secondary: #ddd6fe;
-  --text-muted: #a78bfa;
+  --text-primary: #f1f5f9;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
 
-  --border-color: rgba(167, 139, 250, 0.28);
-  --border-color-strong: rgba(167, 139, 250, 0.42);
+  --border-color: rgba(129, 140, 248, 0.28);
+  --border-color-strong: rgba(56, 189, 248, 0.42);
 
   --scrollbar-track: transparent;
-  --scrollbar-thumb: rgba(167, 139, 250, 0.26);
-  --scrollbar-thumb-hover: rgba(167, 139, 250, 0.48);
-  --scrollbar-glow: rgba(167, 139, 250, 0.36);
+  --scrollbar-thumb: rgba(129, 140, 248, 0.26);
+  --scrollbar-thumb-hover: rgba(56, 189, 248, 0.48);
+  --scrollbar-glow: rgba(56, 189, 248, 0.36);
 
-  --dialog-bg: #0b0521;
-  --dialog-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.78), 0 0 0 1px rgba(167, 139, 250, 0.18);
+  --dialog-bg: #080c17;
+  --dialog-shadow: 0 25px 50px -12px rgba(1, 2, 6, 0.85), 0 0 0 1px rgba(56, 189, 248, 0.2);
 
-  --input-bg: rgba(14, 9, 30, 0.7);
-  --input-border: rgba(167, 139, 250, 0.28);
-  --input-text: #f3e8ff;
-  --input-placeholder: #c4b5fd;
+  --input-bg: rgba(11, 16, 32, 0.7);
+  --input-border: rgba(129, 140, 248, 0.28);
+  --input-text: #e2e8f0;
+  --input-placeholder: #94a3b8;
 
-  --hover-bg: rgba(167, 139, 250, 0.05);
-  --hover-bg-strong: rgba(167, 139, 250, 0.12);
+  --hover-bg: rgba(56, 189, 248, 0.05);
+  --hover-bg-strong: rgba(56, 189, 248, 0.14);
 
-  --glass-bg: rgba(4, 2, 14, 0.84);
-  --glass-border: rgba(167, 139, 250, 0.22);
+  --glass-bg: rgba(6, 8, 16, 0.84);
+  --glass-border: rgba(129, 140, 248, 0.22);
   --glass-backdrop: blur(16px) saturate(1.2);
 
-  --accent-indigo: #d8b4fe;
-  --accent-purple: #a855f7;
-  --accent-blue: #8b5cf6;
-  --accent-cyan: #a78bfa;
-  --accent-glow: rgba(196, 181, 253, 0.34);
+  --accent-indigo: #a5b4fc;
+  --accent-purple: #c084fc;
+  --accent-blue: #60a5fa;
+  --accent-cyan: #22d3ee;
+  --accent-glow: rgba(96, 165, 250, 0.38);
 }
 
 /* ========================
@@ -1643,9 +1643,12 @@ a:hover {
   background: var(--preview-bg);
   border: 1px solid var(--border-color);
   border-radius: 12px;
-  overflow-x: auto;
-  overflow-y: auto;
+  overflow: hidden;
+  max-height: 80vh;
   min-height: 120px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   animation: fadeInScale 0.5s ease-out;
   box-shadow:
     0 4px 6px -1px rgba(0, 0, 0, 0.1),
@@ -1657,13 +1660,17 @@ a:hover {
   justify-content: center;
   align-items: center;
   min-height: 80px;
+  width: 100%;
+  max-height: calc(80vh - 3rem);
 }
 
 .markdown-preview .mermaid-chart svg {
-  max-width: none !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
   width: auto !important;
   height: auto !important;
-  min-width: 100%;
+  object-fit: contain;
+  transform-origin: center center;
 }
 
 .markdown-preview .mermaid-error {
