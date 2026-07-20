@@ -269,6 +269,7 @@ const THEME_OPTIONS = [
 
 const fileManagerWidth = ref(parseInt(localStorage.getItem('fileManagerWidth')) || 256)
 const isFileManagerResizing = ref(false)
+const FILE_MANAGER_RESIZE_CLASS = 'file-manager-resize-active'
 const appRootStyle = computed(() => ({
   '--app-root-outside-bg': 'color-mix(in srgb, var(--editor-bg) 90%, var(--text-muted) 10%)'
 }))
@@ -393,13 +394,17 @@ function showConfirmDialog(options = {}) {
 }
 
 function startFileManagerResize(e) {
+  e.preventDefault()
   isFileManagerResizing.value = true
+  document.body.classList.add(FILE_MANAGER_RESIZE_CLASS)
   document.addEventListener('mousemove', onFileManagerResize)
   document.addEventListener('mouseup', stopFileManagerResize)
+  document.addEventListener('selectstart', preventFileManagerResizeSelection)
 }
 
 function onFileManagerResize(e) {
   if (!isFileManagerResizing.value) return
+  e.preventDefault()
   const rect = getViewportRect()
   const appLeft = rect?.left ?? 0
   const appWidth = rect?.width || window.innerWidth
@@ -411,10 +416,18 @@ function onFileManagerResize(e) {
   }
 }
 
+function preventFileManagerResizeSelection(e) {
+  if (isFileManagerResizing.value) {
+    e.preventDefault()
+  }
+}
+
 function stopFileManagerResize() {
   isFileManagerResizing.value = false
+  document.body.classList.remove(FILE_MANAGER_RESIZE_CLASS)
   document.removeEventListener('mousemove', onFileManagerResize)
   document.removeEventListener('mouseup', stopFileManagerResize)
+  document.removeEventListener('selectstart', preventFileManagerResizeSelection)
 }
 
 const currentFileId = fileSystem.currentFileId
@@ -479,18 +492,9 @@ function getDescendantFileIds(fileId) {
   return ids
 }
 
-async function handleDeleteFile(fileId) {
+function handleDeleteFile(fileId) {
   const file = fileSystem.files.value.find((f) => f.id === fileId)
   if (!file) return
-
-  const confirmed = await showConfirmDialog({
-    title: '永久删除',
-    message: `永久删除「${file.name}」？此操作无法撤销。`,
-    iconType: 'warning',
-    confirmText: '删除',
-    confirmVariant: 'danger'
-  })
-  if (!confirmed) return
 
   const idsToClose = getDescendantFileIds(fileId)
   const deleted = fileSystem.deleteFile(fileId)
@@ -1108,6 +1112,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  stopFileManagerResize()
   appAlertTimers.forEach((timer) => window.clearTimeout(timer))
   appAlertTimers.clear()
   if (confirmDialogResolver) {
@@ -1171,6 +1176,12 @@ watch(currentFileId, () => {
 .resize-handle.is-resizing .resize-line {
   background: var(--accent-color);
   height: 48px;
+}
+
+:global(.file-manager-resize-active),
+:global(.file-manager-resize-active *) {
+  user-select: none !important;
+  cursor: col-resize !important;
 }
 
 .editor-wrapper {
@@ -1427,4 +1438,3 @@ watch(currentFileId, () => {
   transform: translateX(-50%) translateY(-12px);
 }
 </style>
-

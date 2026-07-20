@@ -67,6 +67,15 @@
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 17.27 18.18 21 16.55 14.03 22 9.24 14.91 8.62 12 2 9.09 8.62 2 9.24 7.45 14.03 5.82 21z" />
         </svg>
       </button>
+      <button
+        class="ft-delete-btn"
+        title="移入回收站"
+        @click.stop="archiveCurrent"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.8 11.2A2 2 0 0116.2 20H7.8a2 2 0 01-2-1.8L5 7m5 4v5m4-5v5M9 7V4.8A1.8 1.8 0 0110.8 3h2.4A1.8 1.8 0 0115 4.8V7M4 7h16" />
+        </svg>
+      </button>
     </div>
 
     <div
@@ -105,6 +114,8 @@
         name-class="ft-name"
         :disabled="isRenaming"
       />
+      <span class="ft-size">{{ formatSize(file.content?.length || 0) }}</span>
+      <span class="ft-date">{{ formatDate(file.updatedAt) }}</span>
       <button
         class="ft-star-btn"
         :class="{ active: isFavorited }"
@@ -118,8 +129,15 @@
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 17.27 18.18 21 16.55 14.03 22 9.24 14.91 8.62 12 2 9.09 8.62 2 9.24 7.45 14.03 5.82 21z" />
         </svg>
       </button>
-      <span class="ft-size">{{ formatSize(file.content?.length || 0) }}</span>
-      <span class="ft-date">{{ formatDate(file.updatedAt) }}</span>
+      <button
+        class="ft-delete-btn"
+        title="移入回收站"
+        @click.stop="archiveCurrent"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.8 11.2A2 2 0 0116.2 20H7.8a2 2 0 01-2-1.8L5 7m5 4v5m4-5v5M9 7V4.8A1.8 1.8 0 0110.8 3h2.4A1.8 1.8 0 0115 4.8V7M4 7h16" />
+        </svg>
+      </button>
     </div>
 
     <Transition name="tree">
@@ -210,17 +228,6 @@
       </Transition>
     </Teleport>
 
-    <!-- 删除确认弹窗 -->
-    <ConfirmModal
-      :visible="showDeleteConfirm"
-      :is-dark="isDark"
-      title="移入回收站"
-      :message="deleteConfirmMessage"
-      icon-type="warning"
-      @confirm="handleDeleteConfirm"
-      @cancel="showDeleteConfirm = false"
-    />
-
     <!-- 移动对话框 -->
     <Transition name="modal">
       <div
@@ -285,7 +292,6 @@
 
 <script setup>
 import { ref, computed, onBeforeUnmount, onMounted } from 'vue'
-import ConfirmModal from './ConfirmModal.vue'
 import FileHoverPreview from './FileHoverPreview.vue'
 
 const props = defineProps({
@@ -332,9 +338,6 @@ const children = computed(() => {
   }
   return rawChildren
 })
-const deleteConfirmMessage = computed(() => {
-  return `确定要将 "${deleteFile.value?.name || ''}" 移入回收站吗？之后可以在回收站恢复。`
-})
 const allFolders = computed(() => {
   const folders = []
   const rootItems = props.rootFiles || []
@@ -362,8 +365,6 @@ const selectedFolderId = ref(null)
 const isRenaming = ref(false)
 const renameValue = ref('')
 const renameInput = ref(null)
-const showDeleteConfirm = ref(false)
-const deleteFile = ref(null)
 
 function showContextMenu(e, file) {
   window.dispatchEvent(new CustomEvent(CLOSE_FILE_CONTEXT_MENUS_EVENT))
@@ -419,8 +420,7 @@ function handleAction(action) {
       emit('show-details', file)
       break
     case 'delete':
-      deleteFile.value = file
-      showDeleteConfirm.value = true
+      archiveFile(file)
       break
     case 'move':
       showMoveDialog.value = true
@@ -445,13 +445,14 @@ function toggleFavorite() {
   emit('toggleFavorite', { fileId: props.file.id })
 }
 
-function handleDeleteConfirm() {
-  const file = deleteFile.value
+function archiveCurrent() {
+  archiveFile(props.file)
+}
+
+function archiveFile(file) {
   if (file) {
     emit('archive', file.id)
   }
-  showDeleteConfirm.value = false
-  deleteFile.value = null
 }
 
 function confirmMove() {
@@ -733,7 +734,9 @@ onBeforeUnmount(() => {
   font-weight: 500;
 }
 
-.ft-star-btn {
+.ft-star-btn,
+.ft-delete-btn {
+  flex: 0 0 1.1rem;
   width: 1.1rem;
   height: 1.1rem;
   border-radius: 9999px;
@@ -746,9 +749,11 @@ onBeforeUnmount(() => {
   padding: 0;
   cursor: pointer;
   opacity: 0.85;
+  transition: color 0.15s ease, background-color 0.15s ease;
 }
 
-.ft-star-btn svg {
+.ft-star-btn svg,
+.ft-delete-btn svg {
   width: 0.95rem;
   height: 0.95rem;
 }
@@ -759,6 +764,11 @@ onBeforeUnmount(() => {
 
 .ft-star-btn.active {
   color: #f59e0b;
+}
+
+.ft-delete-btn:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.08);
 }
 
 .ft-count {

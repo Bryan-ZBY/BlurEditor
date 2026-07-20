@@ -262,7 +262,7 @@
 
         <!-- 编辑区域 -->
         <div class="editor-content">
-          <Transition name="crossfade" mode="out-in">
+          <Transition name="crossfade" mode="out-in" @after-enter="handleEditorViewAfterEnter">
             <div v-if="!isPreviewMode" class="editor-wrapper" key="editor">
               <textarea
                 :value="content"
@@ -751,6 +751,7 @@ const toggleSplitMode = () => {
 }
 
 let mermaidRenderCount = 0
+let previewPostRenderFrame = null
 
 function getNumberOrNaN(value) {
   const valueString = String(value || '').trim()
@@ -864,25 +865,60 @@ const mermaidResizeHandler = () => {
   })
 }
 
+function runPreviewPostRender() {
+  if (!props.isPreviewMode || !previewRef.value) return false
+
+  initMermaid(props.isDark)
+  syncHeadingAnchors()
+  renderMermaid()
+  fitAllMermaidCharts()
+  updateActiveHeadingFromScroll()
+  return true
+}
+
+function schedulePreviewPostRender(retries = 4) {
+  if (previewPostRenderFrame) {
+    window.cancelAnimationFrame(previewPostRenderFrame)
+    previewPostRenderFrame = null
+  }
+
+  nextTick(() => {
+    const attempt = (remainingRetries) => {
+      previewPostRenderFrame = window.requestAnimationFrame(() => {
+        previewPostRenderFrame = null
+        if (runPreviewPostRender()) return
+        if (remainingRetries > 0) {
+          attempt(remainingRetries - 1)
+        }
+      })
+    }
+
+    attempt(retries)
+  })
+}
+
+function handleEditorViewAfterEnter() {
+  schedulePreviewPostRender()
+}
+
 onMounted(() => {
   window.addEventListener('resize', mermaidResizeHandler)
 })
 
 onUnmounted(() => {
+  if (previewPostRenderFrame) {
+    window.cancelAnimationFrame(previewPostRenderFrame)
+    previewPostRenderFrame = null
+  }
   window.removeEventListener('resize', mermaidResizeHandler)
 })
 
 watch(
   () => [props.content, props.isPreviewMode, props.isFullscreenPreview, props.isDark],
   () => {
-    if (props.isPreviewMode) {
-      nextTick(() => {
-        initMermaid(props.isDark)
-        renderMermaid()
-      })
-    }
+    schedulePreviewPostRender()
   },
-  { immediate: false }
+  { immediate: true }
 )
 
 function handleCloseTab(fileId) {
@@ -1569,12 +1605,7 @@ watch(() => props.currentFile?.name, (newName) => {
 watch(
   () => [props.content, props.isPreviewMode],
   () => {
-    nextTick(() => {
-      if (props.isPreviewMode) {
-        syncHeadingAnchors()
-        updateActiveHeadingFromScroll()
-      }
-    })
+    schedulePreviewPostRender()
   },
   { deep: true, immediate: true }
 )
@@ -1624,10 +1655,7 @@ onMounted(() => {
     }
   })
 
-  nextTick(() => {
-    syncHeadingAnchors()
-    updateActiveHeadingFromScroll()
-  })
+  schedulePreviewPostRender()
 })
 
 onUnmounted(() => {
