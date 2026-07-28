@@ -203,6 +203,7 @@
                 <label>字体</label>
                 <button @click="setFontFamily('system')" :class="{ active: previewFont === 'system' }">默认</button>
                 <button @click="setFontFamily('serif')" :class="{ active: previewFont === 'serif' }">衬线</button>
+                <button @click="setFontFamily('kai')" :class="{ active: previewFont === 'kai' }">楷体</button>
                 <button @click="setFontFamily('mono')" :class="{ active: previewFont === 'mono' }">等宽</button>
               </div>
               <div class="setting-group">
@@ -211,6 +212,7 @@
                 <button @click="setFontSize('15')" :class="{ active: previewFontSize === '15' }">15</button>
                 <button @click="setFontSize('16')" :class="{ active: previewFontSize === '16' }">16</button>
                 <button @click="setFontSize('17')" :class="{ active: previewFontSize === '17' }">17</button>
+                <button @click="setFontSize('18')" :class="{ active: previewFontSize === '18' }">18</button>
               </div>
               <div class="setting-group">
                 <label>行高</label>
@@ -229,7 +231,6 @@
                   @change="commitPreviewPageWidth"
                   class="setting-slider"
                 />
-                <span class="setting-range-value">{{ previewPageWidth }}%</span>
               </div>
               <div class="setting-group setting-group-toggle">
                 <label>居中显示</label>
@@ -239,6 +240,27 @@
                     <span class="toggle-thumb"></span>
                   </span>
                 </label>
+              </div>
+              <div class="setting-group setting-group-toggle">
+                <label>文字阴影</label>
+                <label class="toggle-switch">
+                  <input type="checkbox" v-model="previewTextShadowEnabled" />
+                  <span class="toggle-track">
+                    <span class="toggle-thumb"></span>
+                  </span>
+                </label>
+              </div>
+              <div class="setting-group shadow-strength-group" :class="{ disabled: !previewTextShadowEnabled }">
+                <label>阴影强度</label>
+                <button
+                  v-for="level in PREVIEW_TEXT_SHADOW_LEVELS"
+                  :key="level"
+                  @click="setPreviewTextShadowLevel(level)"
+                  :class="{ active: previewTextShadowLevel === level }"
+                  :disabled="!previewTextShadowEnabled"
+                >
+                  {{ level }}
+                </button>
               </div>
             </div>
             <button
@@ -407,9 +429,36 @@ const showOutline = ref(false)
 const showExportMenu = ref(false)
 const showTabs = ref(true)
 const showPreviewSettings = ref(false)
-const previewFont = ref('system')
-const previewFontSize = ref('16')
+const PREVIEW_FONT_KEY = 'blur_editor_preview_font'
+const PREVIEW_FONT_SIZE_KEY = 'blur_editor_preview_font_size'
+const FONT_FAMILY_OPTIONS = {
+  system: "'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif",
+  serif: "fangsong, 'FangSong', STFangSong, 'STFangsong', serif",
+  kai: "'Kaiti SC', 'KaiTi', 'STKaiti', '楷体', '楷体_GB2312', serif",
+  mono: "'SF Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace"
+}
+const FONT_SIZE_OPTIONS = ['14', '15', '16', '17', '18']
+const normalizePreviewFont = (font) => (
+  Object.prototype.hasOwnProperty.call(FONT_FAMILY_OPTIONS, font) ? font : 'system'
+)
+const normalizePreviewFontSize = (size) => (
+  FONT_SIZE_OPTIONS.includes(String(size)) ? String(size) : '16'
+)
+const previewFont = ref(normalizePreviewFont(localStorage.getItem(PREVIEW_FONT_KEY)))
+const previewFontSize = ref(normalizePreviewFontSize(localStorage.getItem(PREVIEW_FONT_SIZE_KEY)))
 const previewLineHeight = ref('1.8')
+const PREVIEW_TEXT_SHADOW_ENABLED_KEY = 'blur_editor_preview_text_shadow_enabled'
+const PREVIEW_TEXT_SHADOW_LEVEL_KEY = 'blur_editor_preview_text_shadow_level'
+const PREVIEW_TEXT_SHADOW_LEVELS = [1, 2, 3, 4, 5]
+const DEFAULT_PREVIEW_TEXT_SHADOW_LEVEL = 3
+const normalizePreviewTextShadowLevel = (level) => {
+  const numericLevel = Number(level)
+  return PREVIEW_TEXT_SHADOW_LEVELS.includes(numericLevel)
+    ? numericLevel
+    : DEFAULT_PREVIEW_TEXT_SHADOW_LEVEL
+}
+const previewTextShadowEnabled = ref(localStorage.getItem(PREVIEW_TEXT_SHADOW_ENABLED_KEY) !== '0')
+const previewTextShadowLevel = ref(normalizePreviewTextShadowLevel(localStorage.getItem(PREVIEW_TEXT_SHADOW_LEVEL_KEY)))
 const exportThemeMode = ref('current')
 const exportIncludeTableOfContents = ref(true)
 const exportOfflineMode = ref(false)
@@ -438,12 +487,6 @@ const { getHeadings } = useOutlineParser(parserSource)
 const outlineHeadings = computed(() => getHeadings())
 
 const activeHeadingId = ref('')
-
-const FONT_FAMILY_OPTIONS = {
-  system: "'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif",
-  serif: "fangsong, 'FangSong', STFangSong, 'STFangsong', serif",
-  mono: "'SF Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace"
-}
 
 const instance = getCurrentInstance()
 const getPreviewEl = () => instance?.refs?.previewRef
@@ -556,10 +599,58 @@ const previewAreaStyle = computed(() => {
   }
 })
 
+function buildPreviewShadowStyle(level, isDarkMode) {
+  if (!previewTextShadowEnabled.value) {
+    return {
+      '--preview-text-shadow': 'none',
+      '--preview-heading-shadow': 'none',
+      '--preview-text-filter': 'none',
+      '--preview-heading-filter': 'none'
+    }
+  }
+
+  const intensity = normalizePreviewTextShadowLevel(level)
+  if (isDarkMode) {
+    const upperAlpha = [0.16, 0.2, 0.24, 0.28, 0.32][intensity - 1]
+    const lowerAlpha = [0.018, 0.026, 0.034, 0.042, 0.05][intensity - 1]
+    const softAlpha = [0.06, 0.08, 0.1, 0.12, 0.14][intensity - 1]
+
+    return {
+      '--preview-text-shadow': `0 -1px 0 rgba(0, 0, 0, ${upperAlpha}), 0 1px 0 rgba(255, 255, 255, ${lowerAlpha})`,
+      '--preview-heading-shadow': `0 -1px 0 rgba(0, 0, 0, ${Math.min(upperAlpha + 0.06, 0.38)}), 0 1px 0 rgba(255, 255, 255, ${Math.min(lowerAlpha + 0.012, 0.06)}), 0 1px 8px rgba(0, 0, 0, ${softAlpha})`,
+      '--preview-text-filter': 'none',
+      '--preview-heading-filter': 'none'
+    }
+  }
+
+  const textAlpha = [0.1, 0.15, 0.2, 0.25, 0.3][intensity - 1]
+  const ambientAlpha = [0.07, 0.1, 0.14, 0.18, 0.22][intensity - 1]
+  const filterAlpha = [0.07, 0.1, 0.14, 0.18, 0.22][intensity - 1]
+  const nearY = [1, 1, 2, 2, 3][intensity - 1]
+  const nearBlur = [1, 2, 2, 3, 4][intensity - 1]
+  const farY = [4, 6, 8, 10, 12][intensity - 1]
+  const farBlur = [10, 14, 18, 22, 28][intensity - 1]
+  const filterY = [2, 3, 5, 6, 8][intensity - 1]
+  const filterBlur = [2, 2, 3, 4, 5][intensity - 1]
+  const shadowColor = '17, 24, 39'
+  const ambientColor = '17, 24, 39'
+  const headingTextAlpha = Math.min(textAlpha + 0.08, 0.72)
+  const headingAmbientAlpha = Math.min(ambientAlpha + 0.04, 0.32)
+  const headingFilterAlpha = Math.min(filterAlpha + 0.06, 0.48)
+
+  return {
+    '--preview-text-shadow': `0 ${nearY}px ${nearBlur}px rgba(${shadowColor}, ${textAlpha}), 0 ${farY}px ${farBlur}px rgba(${ambientColor}, ${ambientAlpha})`,
+    '--preview-heading-shadow': `0 ${nearY + 1}px ${nearBlur + 3}px rgba(${shadowColor}, ${headingTextAlpha}), 0 ${farY + 4}px ${farBlur + 8}px rgba(${ambientColor}, ${headingAmbientAlpha})`,
+    '--preview-text-filter': `drop-shadow(0 ${filterY}px ${filterBlur}px rgba(${shadowColor}, ${filterAlpha}))`,
+    '--preview-heading-filter': `drop-shadow(0 ${filterY + 3}px ${filterBlur + 2}px rgba(${shadowColor}, ${headingFilterAlpha}))`
+  }
+}
+
 const previewTypographyStyle = computed(() => ({
   fontFamily: FONT_FAMILY_OPTIONS[previewFont.value] || FONT_FAMILY_OPTIONS.system,
   fontSize: `${previewFontSize.value}px`,
-  lineHeight: String(previewLineHeight.value)
+  lineHeight: String(previewLineHeight.value),
+  ...buildPreviewShadowStyle(previewTextShadowLevel.value, props.isDark)
 }))
 
 function slugifyForDom(text) {
@@ -621,16 +712,37 @@ function setPreviewSettings(panelState) {
 }
 
 function setFontFamily(font) {
-  previewFont.value = font
+  previewFont.value = normalizePreviewFont(font)
 }
 
 function setFontSize(size) {
-  previewFontSize.value = size
+  previewFontSize.value = normalizePreviewFontSize(size)
 }
 
 function setLineHeight(height) {
   previewLineHeight.value = height
 }
+
+function setPreviewTextShadowLevel(level) {
+  if (!previewTextShadowEnabled.value) return
+  previewTextShadowLevel.value = normalizePreviewTextShadowLevel(level)
+}
+
+watch(previewTextShadowEnabled, (enabled) => {
+  localStorage.setItem(PREVIEW_TEXT_SHADOW_ENABLED_KEY, enabled ? '1' : '0')
+})
+
+watch(previewFont, (font) => {
+  localStorage.setItem(PREVIEW_FONT_KEY, normalizePreviewFont(font))
+})
+
+watch(previewFontSize, (size) => {
+  localStorage.setItem(PREVIEW_FONT_SIZE_KEY, normalizePreviewFontSize(size))
+})
+
+watch(previewTextShadowLevel, (level) => {
+  localStorage.setItem(PREVIEW_TEXT_SHADOW_LEVEL_KEY, String(normalizePreviewTextShadowLevel(level)))
+})
 
 const exportThemeModeList = [
   { value: 'current', label: '跟随当前' },
@@ -839,6 +951,23 @@ function fitAllMermaidCharts() {
   wrappers.forEach((wrapper) => fitMermaidToContainer(wrapper))
 }
 
+function removeDuplicateMermaidArtifacts() {
+  const previewEl = previewRef.value
+  if (!previewEl) return
+
+  previewEl.querySelectorAll('.mermaid-source[data-processed]').forEach((block) => {
+    const artifacts = []
+    let sibling = block.previousElementSibling
+
+    while (sibling?.classList?.contains('mermaid-wrapper') || sibling?.classList?.contains('mermaid-error')) {
+      artifacts.push(sibling)
+      sibling = sibling.previousElementSibling
+    }
+
+    artifacts.slice(1).forEach((artifact) => artifact.remove())
+  })
+}
+
 async function renderMermaid() {
   const previewEl = previewRef.value
   if (!previewEl) return
@@ -847,14 +976,20 @@ async function renderMermaid() {
   if (mermaidBlocks.length === 0) return
 
   for (const block of mermaidBlocks) {
+    const token = String(++mermaidRenderCount)
+    block.setAttribute('data-processed', 'pending')
+    block.setAttribute('data-render-token', token)
+
     try {
       const codeEl = block.querySelector('code')
       const text = codeEl ? codeEl.textContent : ''
-      const id = 'mermaid-render-' + (++mermaidRenderCount)
+      const id = 'mermaid-render-' + token
       const { svg } = await mermaid.render(id, text)
+      if (!block.isConnected || !previewEl.contains(block) || block.getAttribute('data-render-token') !== token) continue
 
       const wrapper = document.createElement('div')
       wrapper.className = 'mermaid-wrapper'
+      wrapper.setAttribute('data-render-token', token)
       wrapper.innerHTML = '<div class="mermaid-chart">' + svg + '</div>'
       wrapper.setAttribute('data-processed', 'true')
 
@@ -866,6 +1001,7 @@ async function renderMermaid() {
         fitMermaidToContainer(wrapper)
       })
     } catch (e) {
+      if (!block.isConnected || !previewEl.contains(block) || block.getAttribute('data-render-token') !== token) continue
       const errorDiv = document.createElement('div')
       errorDiv.className = 'mermaid-error'
       errorDiv.textContent = e.message || 'Mermaid 渲染错误'
@@ -873,6 +1009,8 @@ async function renderMermaid() {
       block.setAttribute('data-processed', 'true')
     }
   }
+
+  removeDuplicateMermaidArtifacts()
 }
 
 const mermaidResizeHandler = () => {
@@ -887,6 +1025,7 @@ function runPreviewPostRender() {
   initMermaid(props.isDark)
   syncHeadingAnchors()
   renderMermaid()
+  removeDuplicateMermaidArtifacts()
   fitAllMermaidCharts()
   updateActiveHeadingFromScroll()
   return true
@@ -1617,14 +1756,6 @@ watch(() => props.currentFile?.name, (newName) => {
     updateTabName(props.currentFile.id, newName)
   }
 })
-
-watch(
-  () => [props.content, props.isPreviewMode],
-  () => {
-    schedulePreviewPostRender()
-  },
-  { deep: true, immediate: true }
-)
 
 watch(() => props.isPreviewMode, (isPreviewMode) => {
   if (!isPreviewMode) {
@@ -2393,17 +2524,24 @@ defineExpose({ editorRef, splitEditorRef, toggleOutline, scrollToLine, scrollPre
   border-color: var(--accent-indigo, #6366f1);
 }
 
+.preview-settings .setting-group button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+  transform: none;
+}
+
+.preview-settings .setting-group button:disabled:hover {
+  background: transparent;
+}
+
+.preview-settings .shadow-strength-group.disabled label {
+  opacity: 0.62;
+}
+
 .preview-settings .setting-slider {
   width: 100%;
   margin-top: 0.25rem;
   accent-color: var(--accent-indigo, #6366f1);
-}
-
-.preview-settings .setting-range-value {
-  display: inline-block;
-  margin-top: 0.15rem;
-  font-size: 0.75rem;
-  color: var(--text-muted, #64748b);
 }
 
 .preview-settings .setting-group.setting-group-toggle {
@@ -2453,7 +2591,7 @@ defineExpose({ editorRef, splitEditorRef, toggleOutline, scrollToLine, scrollPre
   max-width: 100%;
   width: 100%;
   margin: 0 auto;
-  padding: 1.5rem 1rem;
+  padding: 1.5rem 5rem;
 }
 
 /* 代码块头部显示与交互 */

@@ -4,6 +4,7 @@ import hljs from 'highlight.js'
 const FONT_FAMILY_OPTIONS = {
   system: "'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif",
   serif: "fangsong, 'FangSong', STFangSong, 'STFangsong', serif",
+  kai: "'Kaiti SC', 'KaiTi', 'STKaiti', '楷体', '楷体_GB2312', serif",
   mono: "'SF Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace"
 }
 
