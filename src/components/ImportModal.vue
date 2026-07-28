@@ -268,7 +268,7 @@ async function importFiles(fileList) {
       }
 
       if (/\.json$/i.test(file.name)) {
-        importError.value = `${file.name} 不是有效的 BlurEditor 工作区备份。`
+        importError.value = `${file.name} 不是有效的 MDViewer 工作区备份。`
         continue
       }
 

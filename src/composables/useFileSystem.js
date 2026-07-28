@@ -131,7 +131,7 @@ export function getWorkspaceSummary(workspace) {
     return {
       valid: false,
       compatible: false,
-      warnings: ['这不是 BlurEditor 工作区文件']
+      warnings: ['这不是 MDViewer 工作区文件']
     }
   }
 
@@ -267,6 +267,97 @@ function findAccidentallyImportedWorkspace(files) {
   return null
 }
 
+const DEFAULT_WELCOME_CONTENT = `# 欢迎使用 MDViewer
+
+MDViewer 是一个本地 Markdown 阅读与整理工作台。它把文件树、标签页、正文编辑、实时预览、文档大纲、全局搜索和导入导出放在同一个界面里，适合长期维护个人笔记、项目文档、会议纪要和技术草稿。
+
+你可以把这篇文档当作起点：先读一遍，然后直接改成自己的首页、索引页或工作日志。
+
+## 快速上手
+
+1. 在左侧文件树中新建文档或文件夹，把资料按主题整理起来。
+2. 用标签页同时打开几篇文档，在资料、草稿和预览之间快速切换。
+3. 打开分栏预览，边写边检查标题、表格、代码块和 Mermaid 图表。
+4. 用全局入口搜索命令、文件、正文和标签，减少在文件树里翻找。
+5. 定期导出重要文档或工作区备份，给本地资料留一份保险。
+
+## 常用入口
+
+| 操作 | 快捷键 | 用途 |
+| --- | --- | --- |
+| 全局入口 | Ctrl/Cmd+K 或 Alt+G | 搜索命令、文件、正文和标签 |
+| 编辑/预览 | Alt+V | 在编辑和预览之间切换 |
+| 分栏模式 | Alt+S | 同时查看源码和渲染结果 |
+| 文档大纲 | Alt+H | 浏览标题结构，快速跳转 |
+| 禅模式 | Alt+Z | 专注阅读当前文档 |
+| 主题切换 | Alt+N / Alt+L | 在浅灰和薰衣草之间切换 |
+
+## 建议的整理方式
+
+- 为每个长期主题建一个文件夹，例如“项目文档”“会议纪要”“阅读摘录”。
+- 把高频文档收藏起来，让它们固定出现在更容易访问的位置。
+- 用统一的文件命名格式，例如 \`2026-07-28 例会纪要.md\` 或 \`功能设计 - 导出流程.md\`。
+- 重要资料可以定期导出为 Markdown、HTML、TXT 或工作区备份。
+
+## Markdown 示例
+
+### 代码块
+
+~~~javascript
+function hello() {
+  return 'hello MDViewer'
+}
+~~~
+
+### Mermaid 图表
+
+~~~mermaid
+flowchart LR
+  A[导入资料] --> B[整理文档]
+  B --> C[预览阅读]
+  C --> D[导出备份]
+~~~
+
+## 本地数据说明
+
+MDViewer 当前把文档、文件树和界面偏好保存在浏览器本地存储中，不依赖后端服务，也不会主动上传内容。清理浏览器数据、切换浏览器或更换访问域名都可能让原工作区不可见，因此长期使用前建议养成备份习惯。
+`
+
+const LEGACY_WELCOME_CONTENTS = new Set([
+  `# 欢迎使用 MDViewer\n\nMDViewer 是一个本地 Markdown 阅读与整理工作台，适合管理个人笔记、项目文档、会议纪要和技术草稿。\n\n## 你可以在这里做什么\n\n- 用左侧文件树管理文档和文件夹\n- 用标签页在多篇文档之间切换\n- 用分栏预览查看 Markdown 渲染结果\n- 用全局入口搜索命令、文件、正文和标签\n- 用全局入口执行新建、导入、预览、主题和大纲操作\n- 将内容导出为 Markdown、HTML、TXT 或富文本\n\n## 快速入口\n\n- Ctrl/Cmd+K 或 Alt+G：打开全局入口\n- Alt+H：显示或隐藏文档大纲\n- Alt+Z：进入或退出禅模式\n- Alt+N / Alt+L：切换下一个或上一个主题\n\n## Markdown 示例\n\n\`\`\`javascript\nfunction hello() {\n  return 'hello MDViewer'\n}\n\`\`\`\n`,
+  `# 欢迎使用 BlurEditor\n\nBlurEditor 是一个本地 Markdown 知识工作台，适合整理个人笔记、项目文档、会议纪要和技术草稿。\n\n## 你可以在这里做什么\n\n- 用左侧文件树管理文档和文件夹\n- 用标签页在多篇文档之间切换\n- 用分栏预览查看 Markdown 渲染结果\n- 用全局入口搜索命令、文件、正文和标签\n- 用全局入口执行新建、导入、预览、主题和大纲操作\n- 将内容导出为 Markdown、HTML、TXT 或富文本\n\n## 快速入口\n\n- Ctrl/Cmd+K 或 Alt+G：打开全局入口\n- Alt+H：显示或隐藏文档大纲\n- Alt+Z：进入或退出禅模式\n\n## Markdown 示例\n\n\`\`\`javascript\nfunction hello() {\n  return 'hello world'\n}\n\`\`\`\n`
+])
+
+const DEFAULT_WELCOME_TASK_LIST_PATTERN = /\n### 任务清单\n\n- \[ \] 写下今天最重要的 3 件事\n- \[ \] 给新文档补一个清晰标题\n- \[ \] 导出一次关键资料备份\n/
+
+function refreshDefaultWelcomeFiles(files, now = Date.now()) {
+  let changed = false
+
+  files.forEach((file) => {
+    if (
+      file?.type === 'file' &&
+      file.name === '欢迎使用.md' &&
+      LEGACY_WELCOME_CONTENTS.has(file.content)
+    ) {
+      file.content = DEFAULT_WELCOME_CONTENT
+      file.updatedAt = now
+      changed = true
+      return
+    }
+
+    if (file?.type === 'file' && file.name === '欢迎使用.md') {
+      const nextContent = file.content.replace(DEFAULT_WELCOME_TASK_LIST_PATTERN, '\n')
+      if (nextContent !== file.content) {
+        file.content = nextContent
+        file.updatedAt = now
+        changed = true
+      }
+    }
+  })
+
+  return changed
+}
+
 function createDefaultFiles() {
   const welcomeId = generateId()
   return {
@@ -276,7 +367,7 @@ function createDefaultFiles() {
         name: '欢迎使用.md',
         type: 'file',
         parentId: null,
-        content: `# 欢迎使用 BlurEditor\n\nBlurEditor 是一个本地 Markdown 知识工作台，适合整理个人笔记、项目文档、会议纪要和技术草稿。\n\n## 你可以在这里做什么\n\n- 用左侧文件树管理文档和文件夹\n- 用标签页在多篇文档之间切换\n- 用分栏预览查看 Markdown 渲染结果\n- 用全局入口搜索命令、文件、正文和标签\n- 用全局入口执行新建、导入、预览、主题和大纲操作\n- 将内容导出为 Markdown、HTML、TXT 或富文本\n\n## 快速入口\n\n- Ctrl/Cmd+K 或 Alt+G：打开全局入口\n- Alt+H：显示或隐藏文档大纲\n- Alt+Z：进入或退出禅模式\n\n## Markdown 示例\n\n\`\`\`javascript\nfunction hello() {\n  return 'hello world'\n}\n\`\`\`\n`,
+        content: DEFAULT_WELCOME_CONTENT,
         isArchived: false,
         isFavorite: true,
         tags: [],
@@ -319,9 +410,13 @@ function loadFromStorage() {
 
     const currentFileId = data.currentFileId
     const exists = files.some((file) => file.id === currentFileId && file.type === 'file' && !file.isArchived)
+    const nextCurrentFileId = exists ? currentFileId : null
+    if (refreshDefaultWelcomeFiles(files, now)) {
+      saveToStorage(files, nextCurrentFileId)
+    }
     return {
       files,
-      currentFileId: exists ? currentFileId : null
+      currentFileId: nextCurrentFileId
     }
   } catch (e) {
     console.error('Failed to load file system:', e)

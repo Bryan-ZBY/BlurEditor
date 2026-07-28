@@ -1,5 +1,21 @@
 <template>
   <div class="editor-container" :class="{ 'is-dark': isDark, 'zen-mode': isZenMode && isPreviewMode }">
+    <Transition name="fade-scale">
+      <button
+        v-if="isZenMode && isPreviewMode"
+        type="button"
+        class="zen-exit-floating-btn"
+        title="退出禅模式"
+        aria-label="退出禅模式"
+        @click="toggleZenMode"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 9H4m0 0v5m0-5l6 6m5-6h5m0 0v5m0-5l-6 6"/>
+        </svg>
+        <span>退出禅模式</span>
+      </button>
+    </Transition>
+
     <!-- 标签页 -->
     <EditorTabs
       v-if="showTabs && !isZenMode"
@@ -362,7 +378,7 @@ const props = defineProps({
   isDark: Boolean,
   files: { type: Array, default: () => [] },
   previewPageWidth: { type: Number, default: 100 },
-  previewPageCentered: { type: Boolean, default: false }
+  previewPageCentered: { type: Boolean, default: true }
 })
 
 const emit = defineEmits([
@@ -1682,6 +1698,86 @@ defineExpose({ editorRef, splitEditorRef, toggleOutline, scrollToLine, scrollPre
   background: var(--editor-bg, #fff);
   position: relative;
   overflow: hidden;
+}
+
+.zen-exit-floating-btn {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 80;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  height: 2.5rem;
+  padding: 0 0.85rem;
+  border: 1px solid var(--border-color-strong, rgba(107, 114, 128, 0.32));
+  border-radius: 999px;
+  background: var(--glass-bg, rgba(255, 255, 255, 0.78));
+  color: var(--text-primary, #111827);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16), 0 0 0 1px var(--glass-border, rgba(107, 114, 128, 0.2));
+  backdrop-filter: var(--glass-backdrop, blur(16px) saturate(1.2));
+  -webkit-backdrop-filter: var(--glass-backdrop, blur(16px) saturate(1.2));
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+  line-height: 1;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.zen-exit-floating-btn svg {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+}
+
+.zen-exit-floating-btn:hover {
+  border-color: var(--accent-indigo, #6366f1);
+  background: var(--menu-bg, #fff);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2), 0 0 0 1px var(--accent-glow, rgba(99, 102, 241, 0.2));
+  transform: translateY(-1px);
+}
+
+.zen-exit-floating-btn:active {
+  transform: translateY(0);
+}
+
+.zen-exit-floating-btn:focus-visible {
+  outline: 2px solid var(--accent-indigo, #6366f1);
+  outline-offset: 3px;
+}
+
+.fade-scale-enter-active,
+.fade-scale-leave-active {
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.fade-scale-enter-from,
+.fade-scale-leave-to {
+  opacity: 0;
+  transform: translateY(-6px) scale(0.96);
+}
+
+@media (max-width: 640px) {
+  .zen-exit-floating-btn {
+    top: 0.75rem;
+    right: 0.75rem;
+    width: 2.5rem;
+    padding: 0;
+    gap: 0;
+  }
+
+  .zen-exit-floating-btn span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
 }
 
 

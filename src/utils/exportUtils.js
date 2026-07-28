@@ -23,8 +23,8 @@ const DEFAULT_EXPORT_OPTIONS = {
 }
 
 const THEME_PRESETS = {
-  light: 'beige',
-  dark: 'midnight'
+  light: 'lightgrey',
+  dark: 'lavender'
 }
 
 function createThemeProbe(themeName) {

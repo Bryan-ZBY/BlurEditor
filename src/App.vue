@@ -258,13 +258,7 @@ const PREVIEW_PAGE_CENTERED_KEY = 'blur_editor_preview_page_centered'
 const LAST_SEARCH_QUERY_KEY = 'blur_editor_last_search_query'
 const THEME_OPTIONS = [
   { id: 'lightgrey', title: '浅灰' },
-  { id: 'midnight', title: '午夜' },
-  { id: 'lightgoldenrodyellow', title: '浅秋黄' },
-  { id: 'lavender', title: '薰衣草' },
-  { id: 'beige', title: '米黄' },
-  { id: 'antiquewhite', title: '古董白' },
-  { id: 'cornsilk', title: '米绸色' },
-  { id: 'ivory', title: '象牙白' }
+  { id: 'lavender', title: '薰衣草' }
 ]
 
 const fileManagerWidth = ref(parseInt(localStorage.getItem('fileManagerWidth')) || 256)
@@ -274,7 +268,7 @@ const appRootStyle = computed(() => ({
   '--app-root-outside-bg': 'color-mix(in srgb, var(--editor-bg) 90%, var(--text-muted) 10%)'
 }))
 const appPreviewPageWidth = ref(clamp(parseInt(localStorage.getItem(PREVIEW_PAGE_WIDTH_KEY) || 100, 10), 40, 100))
-const isPreviewPageCentered = ref(localStorage.getItem(PREVIEW_PAGE_CENTERED_KEY) === '1')
+const isPreviewPageCentered = ref(localStorage.getItem(PREVIEW_PAGE_CENTERED_KEY) !== '0')
 const appViewportStyle = computed(() => {
   const widthPercent = clamp(appPreviewPageWidth.value, 40, 100)
   const width = `${widthPercent}%`
@@ -831,7 +825,7 @@ const commandPaletteCommands = computed(() => [
   { id: 'command:newFile', title: '新建文件', hint: '创建 Markdown 文件', group: '文件', tags: ['new', 'file'] },
   { id: 'command:newFolder', title: '新建文件夹', hint: '创建一个新文件夹', group: '文件', tags: ['new', 'folder'] },
   { id: 'command:import', title: '导入文件', hint: '从本地导入 Markdown 文件', group: '文件', tags: ['import', 'file'] },
-  { id: 'command:exportWorkspace', title: '导出工作区备份', hint: '导出完整 BlurEditor 工作区 JSON', group: '文件', tags: ['export', 'backup', 'workspace'] },
+  { id: 'command:exportWorkspace', title: '导出工作区备份', hint: '导出完整 MDViewer 工作区 JSON', group: '文件', tags: ['export', 'backup', 'workspace'] },
   ...(fileSystem.importBackupInfo.value ? [{
     id: 'command:restoreImportBackup',
     title: '恢复导入前备份',

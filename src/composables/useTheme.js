@@ -1,27 +1,22 @@
 import { ref, computed } from 'vue'
 
 const THEME_KEY = 'editor_theme'
+const DEFAULT_THEME = 'lightgrey'
 const THEME_SEQUENCE = [
   'lightgrey',
-  'midnight',
-  'lightgoldenrodyellow',
-  'lavender',
-  'antiquewhite',
-  'beige',
-  'cornsilk',
-  'ivory'
+  'lavender'
 ]
-const DARK_THEMES = new Set(['midnight', 'lavender', 'lightgoldenrodyellow'])
+const DARK_THEMES = new Set(['lavender'])
 const LIGHT_THEMES = new Set(THEME_SEQUENCE.filter((theme) => !DARK_THEMES.has(theme)))
 const THEME_ALIASES = {
-  dark: 'midnight',
-  light: 'beige',
+  dark: 'lavender',
+  light: DEFAULT_THEME,
 }
 
 export function useTheme() {
   const savedTheme = localStorage.getItem(THEME_KEY)
   const normalizedTheme = THEME_ALIASES[savedTheme] || savedTheme
-  const initialTheme = THEME_SEQUENCE.includes(normalizedTheme) ? normalizedTheme : 'midnight'
+  const initialTheme = THEME_SEQUENCE.includes(normalizedTheme) ? normalizedTheme : DEFAULT_THEME
   const theme = ref(initialTheme)
 
   const isDark = computed(() => DARK_THEMES.has(theme.value))
