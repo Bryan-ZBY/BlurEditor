@@ -50,7 +50,7 @@ const props = defineProps({
 const PREVIEW_DELAY_MS = 500
 const HIDE_DELAY_MS = 180
 const MAX_PREVIEW_CHARS = 1200
-const PREVIEW_WIDTH = 340
+const PREVIEW_WIDTH = 420
 const PREVIEW_HEIGHT = 280
 const VIEWPORT_GAP = 10
 const CLOSE_PREVIEW_EVENT = 'blur-editor-close-file-previews'
@@ -71,11 +71,12 @@ const previewText = computed(() => {
 })
 
 const previewMeta = computed(() => {
-  if (props.file?.type === 'folder') return '文件夹'
+  const updatedAt = formatDate(props.file?.updatedAt || props.file?.createdAt)
+  if (props.file?.type === 'folder') return `文件夹 · ${updatedAt}`
 
   const size = formatSize(String(props.file?.content ?? '').length)
   const lines = props.file?.content ? String(props.file.content).split('\n').length : 0
-  return `Markdown 文件 · ${size} · ${lines} 行`
+  return `Markdown 文件 · ${size} · ${lines} 行 · ${updatedAt}`
 })
 
 function schedulePreview() {
@@ -159,6 +160,18 @@ function formatSize(bytes) {
   const sizes = ['B', 'KB', 'MB', 'GB']
   const i = Math.min(Math.floor(Math.log(bytes) / Math.log(k)), sizes.length - 1)
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`
+}
+
+function formatDate(timestamp) {
+  if (!timestamp) return '-'
+  const date = new Date(timestamp)
+  if (Number.isNaN(date.getTime())) return '-'
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  return `${year}-${month}-${day} ${hours}:${minutes}`
 }
 
 watch(showPreview, (visible) => {

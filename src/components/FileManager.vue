@@ -175,6 +175,7 @@
           :get-children="getChildren"
           :get-sorted-files="getSortedFiles"
           :root-files="rootFiles"
+          :auto-rename-file-id="autoRenameFileId"
           :style="{ animationDelay: index * 30 + 'ms' }"
           @select="$emit('selectFile', $event)"
           @toggle="toggleFolder"
@@ -188,6 +189,7 @@
           @toggleFavorite="$emit('toggleFavorite', $event)"
           @show-details="openFileProperties"
           @context-open="closeFileProperties"
+          @auto-rename-consumed="$emit('auto-rename-consumed', $event)"
         />
       </TransitionGroup>
 
@@ -300,7 +302,8 @@ const props = defineProps({
   isDark: Boolean,
   sortMode: String,
   sortDirection: { type: String, default: 'asc' },
-  getSortedFiles: Function
+  getSortedFiles: Function,
+  autoRenameFileId: String
 })
 
 const emit = defineEmits([
@@ -318,7 +321,8 @@ const emit = defineEmits([
   'renameFile',
   'openImport',
   'setSortMode',
-  'toggleFavorite'
+  'toggleFavorite',
+  'auto-rename-consumed'
 ])
 
 const showNewMenu = ref(false)
@@ -372,6 +376,27 @@ const propertyFileChildCount = computed(() => {
   if (!propertyFile.value || propertyFile.value.type !== 'folder') return 0
   return props.getChildren?.(propertyFile.value.id)?.length || 0
 })
+
+watch(
+  () => props.autoRenameFileId,
+  (fileId) => {
+    if (!fileId) return
+    const file = props.files?.find((item) => item.id === fileId)
+    if (!file) return
+
+    searchText.value = ''
+    expandAncestors(file)
+  },
+  { immediate: true }
+)
+
+function expandAncestors(file) {
+  let parentId = file?.parentId
+  while (parentId) {
+    expandedIds.value.add(parentId)
+    parentId = props.files?.find((item) => item.id === parentId)?.parentId
+  }
+}
 
 function toggleFolder(folderId) {
   if (expandedIds.value.has(folderId)) {

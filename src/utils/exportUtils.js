@@ -17,7 +17,7 @@ const DEFAULT_EXPORT_OPTIONS = {
   previewLineHeight: '1.75',
   tableOfContentsTitle: '目录',
   includeTableOfContents: true,
-  previewPageWidth: 100,
+  previewPageWidth: 80,
   offline: false,
   includeExternalLinks: true,
   autoPrint: false

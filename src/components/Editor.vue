@@ -44,9 +44,12 @@
             <span v-if="currentFile" class="filename">
               {{ currentFile.name }}
             </span>
-            <span v-if="currentFile" class="file-info">
-              {{ currentFile.content?.length || 0 }} 字符
-            </span>
+            <div v-if="currentFile" class="file-meta">
+              <span class="file-info">{{ fileStats.characters }} 字符</span>
+              <span class="file-info">{{ fileStats.lines }} 行</span>
+              <span class="file-info">{{ fileStats.size }}</span>
+              <span class="file-info file-info-date">{{ fileStats.updatedAt }}</span>
+            </div>
           </div>
           <div class="top-bar-right">
             <!-- 大纲切换 -->
@@ -216,6 +219,7 @@
               </div>
               <div class="setting-group">
                 <label>行高</label>
+                <button @click="setLineHeight('1.35')" :class="{ active: previewLineHeight === '1.35' }">1.35</button>
                 <button @click="setLineHeight('1.55')" :class="{ active: previewLineHeight === '1.55' }">1.55</button>
                 <button @click="setLineHeight('1.75')" :class="{ active: previewLineHeight === '1.75' }">1.75</button>
                 <button @click="setLineHeight('1.95')" :class="{ active: previewLineHeight === '1.95' }">1.95</button>
@@ -399,7 +403,7 @@ const props = defineProps({
   isResizing: Boolean,
   isDark: Boolean,
   files: { type: Array, default: () => [] },
-  previewPageWidth: { type: Number, default: 100 },
+  previewPageWidth: { type: Number, default: 80 },
   previewPageCentered: { type: Boolean, default: true }
 })
 
@@ -431,6 +435,7 @@ const showTabs = ref(true)
 const showPreviewSettings = ref(false)
 const PREVIEW_FONT_KEY = 'blur_editor_preview_font'
 const PREVIEW_FONT_SIZE_KEY = 'blur_editor_preview_font_size'
+const PREVIEW_LINE_HEIGHT_KEY = 'blur_editor_preview_line_height'
 const FONT_FAMILY_OPTIONS = {
   system: "'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif",
   serif: "fangsong, 'FangSong', STFangSong, 'STFangsong', serif",
@@ -438,19 +443,29 @@ const FONT_FAMILY_OPTIONS = {
   mono: "'SF Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace"
 }
 const FONT_SIZE_OPTIONS = ['14', '15', '16', '17', '18']
+const LINE_HEIGHT_OPTIONS = ['1.35', '1.55', '1.75', '1.95']
 const normalizePreviewFont = (font) => (
   Object.prototype.hasOwnProperty.call(FONT_FAMILY_OPTIONS, font) ? font : 'system'
 )
 const normalizePreviewFontSize = (size) => (
   FONT_SIZE_OPTIONS.includes(String(size)) ? String(size) : '16'
 )
+const normalizePreviewLineHeight = (height) => (
+  LINE_HEIGHT_OPTIONS.includes(String(height)) ? String(height) : '1.75'
+)
 const previewFont = ref(normalizePreviewFont(localStorage.getItem(PREVIEW_FONT_KEY)))
 const previewFontSize = ref(normalizePreviewFontSize(localStorage.getItem(PREVIEW_FONT_SIZE_KEY)))
-const previewLineHeight = ref('1.8')
+const previewLineHeight = ref(normalizePreviewLineHeight(localStorage.getItem(PREVIEW_LINE_HEIGHT_KEY)))
 const PREVIEW_TEXT_SHADOW_ENABLED_KEY = 'blur_editor_preview_text_shadow_enabled'
 const PREVIEW_TEXT_SHADOW_LEVEL_KEY = 'blur_editor_preview_text_shadow_level'
-const PREVIEW_TEXT_SHADOW_LEVELS = [1, 2, 3, 4, 5]
+const PREVIEW_TEXT_SHADOW_LEVELS = [1, 2, 3, 4, 5, 6, 7]
 const DEFAULT_PREVIEW_TEXT_SHADOW_LEVEL = 3
+const PREVIEW_SHADOW_NONE_STYLE = {
+  '--preview-text-shadow': 'none',
+  '--preview-heading-shadow': 'none',
+  '--preview-text-filter': 'none',
+  '--preview-heading-filter': 'none'
+}
 const normalizePreviewTextShadowLevel = (level) => {
   const numericLevel = Number(level)
   return PREVIEW_TEXT_SHADOW_LEVELS.includes(numericLevel)
@@ -463,7 +478,8 @@ const exportThemeMode = ref('current')
 const exportIncludeTableOfContents = ref(true)
 const exportOfflineMode = ref(false)
 const exportTableOfContentsTitle = ref('目录')
-const clampPreviewPageWidth = (value) => Math.max(40, Math.min(100, Number(value) || 100))
+const DEFAULT_PREVIEW_PAGE_WIDTH = 80
+const clampPreviewPageWidth = (value) => Math.max(40, Math.min(100, Number(value) || DEFAULT_PREVIEW_PAGE_WIDTH))
 const previewPageWidth = ref(clampPreviewPageWidth(props.previewPageWidth))
 const previewPageCentered = computed({
   get: () => !!props.previewPageCentered,
@@ -600,38 +616,20 @@ const previewAreaStyle = computed(() => {
 })
 
 function buildPreviewShadowStyle(level, isDarkMode) {
-  if (!previewTextShadowEnabled.value) {
-    return {
-      '--preview-text-shadow': 'none',
-      '--preview-heading-shadow': 'none',
-      '--preview-text-filter': 'none',
-      '--preview-heading-filter': 'none'
-    }
+  if (!previewTextShadowEnabled.value || isDarkMode) {
+    return PREVIEW_SHADOW_NONE_STYLE
   }
 
   const intensity = normalizePreviewTextShadowLevel(level)
-  if (isDarkMode) {
-    const upperAlpha = [0.16, 0.2, 0.24, 0.28, 0.32][intensity - 1]
-    const lowerAlpha = [0.018, 0.026, 0.034, 0.042, 0.05][intensity - 1]
-    const softAlpha = [0.06, 0.08, 0.1, 0.12, 0.14][intensity - 1]
-
-    return {
-      '--preview-text-shadow': `0 -1px 0 rgba(0, 0, 0, ${upperAlpha}), 0 1px 0 rgba(255, 255, 255, ${lowerAlpha})`,
-      '--preview-heading-shadow': `0 -1px 0 rgba(0, 0, 0, ${Math.min(upperAlpha + 0.06, 0.38)}), 0 1px 0 rgba(255, 255, 255, ${Math.min(lowerAlpha + 0.012, 0.06)}), 0 1px 8px rgba(0, 0, 0, ${softAlpha})`,
-      '--preview-text-filter': 'none',
-      '--preview-heading-filter': 'none'
-    }
-  }
-
-  const textAlpha = [0.1, 0.15, 0.2, 0.25, 0.3][intensity - 1]
-  const ambientAlpha = [0.07, 0.1, 0.14, 0.18, 0.22][intensity - 1]
-  const filterAlpha = [0.07, 0.1, 0.14, 0.18, 0.22][intensity - 1]
-  const nearY = [1, 1, 2, 2, 3][intensity - 1]
-  const nearBlur = [1, 2, 2, 3, 4][intensity - 1]
-  const farY = [4, 6, 8, 10, 12][intensity - 1]
-  const farBlur = [10, 14, 18, 22, 28][intensity - 1]
-  const filterY = [2, 3, 5, 6, 8][intensity - 1]
-  const filterBlur = [2, 2, 3, 4, 5][intensity - 1]
+  const textAlpha = [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4][intensity - 1]
+  const ambientAlpha = [0.07, 0.1, 0.14, 0.18, 0.22, 0.26, 0.3][intensity - 1]
+  const filterAlpha = [0.07, 0.1, 0.14, 0.18, 0.22, 0.26, 0.3][intensity - 1]
+  const nearY = [1, 1, 2, 2, 3, 3, 4][intensity - 1]
+  const nearBlur = [1, 2, 2, 3, 4, 5, 6][intensity - 1]
+  const farY = [4, 6, 8, 10, 12, 14, 16][intensity - 1]
+  const farBlur = [10, 14, 18, 22, 28, 34, 40][intensity - 1]
+  const filterY = [2, 3, 5, 6, 8, 10, 12][intensity - 1]
+  const filterBlur = [2, 2, 3, 4, 5, 6, 7][intensity - 1]
   const shadowColor = '17, 24, 39'
   const ambientColor = '17, 24, 39'
   const headingTextAlpha = Math.min(textAlpha + 0.08, 0.72)
@@ -652,6 +650,50 @@ const previewTypographyStyle = computed(() => ({
   lineHeight: String(previewLineHeight.value),
   ...buildPreviewShadowStyle(previewTextShadowLevel.value, props.isDark)
 }))
+
+const currentFileContent = computed(() => props.content ?? props.currentFile?.content ?? '')
+const fileStats = computed(() => {
+  const content = currentFileContent.value || ''
+  const updatedAt = props.currentFile?.updatedAt || props.currentFile?.createdAt
+
+  return {
+    characters: content.length,
+    lines: countContentLines(content),
+    size: formatFileSize(getUtf8ByteSize(content)),
+    updatedAt: formatFileDate(updatedAt)
+  }
+})
+
+function countContentLines(content) {
+  return content ? content.split(/\r\n|\r|\n/).length : 0
+}
+
+function getUtf8ByteSize(content) {
+  if (typeof TextEncoder !== 'undefined') {
+    return new TextEncoder().encode(content).length
+  }
+  return content.length
+}
+
+function formatFileSize(bytes) {
+  if (!bytes) return '0 B'
+  const unit = 1024
+  const units = ['B', 'KB', 'MB', 'GB']
+  const unitIndex = Math.min(Math.floor(Math.log(bytes) / Math.log(unit)), units.length - 1)
+  return `${parseFloat((bytes / Math.pow(unit, unitIndex)).toFixed(1))} ${units[unitIndex]}`
+}
+
+function formatFileDate(timestamp) {
+  if (!timestamp) return '-'
+  const date = new Date(timestamp)
+  if (Number.isNaN(date.getTime())) return '-'
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  return `${year}-${month}-${day} ${hours}:${minutes}`
+}
 
 function slugifyForDom(text) {
   return text
@@ -720,7 +762,7 @@ function setFontSize(size) {
 }
 
 function setLineHeight(height) {
-  previewLineHeight.value = height
+  previewLineHeight.value = normalizePreviewLineHeight(height)
 }
 
 function setPreviewTextShadowLevel(level) {
@@ -738,6 +780,10 @@ watch(previewFont, (font) => {
 
 watch(previewFontSize, (size) => {
   localStorage.setItem(PREVIEW_FONT_SIZE_KEY, normalizePreviewFontSize(size))
+})
+
+watch(previewLineHeight, (height) => {
+  localStorage.setItem(PREVIEW_LINE_HEIGHT_KEY, normalizePreviewLineHeight(height))
 })
 
 watch(previewTextShadowLevel, (level) => {
@@ -1945,6 +1991,8 @@ defineExpose({ editorRef, splitEditorRef, toggleOutline, scrollToLine, scrollPre
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .filename {
@@ -1956,6 +2004,15 @@ defineExpose({ editorRef, splitEditorRef, toggleOutline, scrollToLine, scrollPre
   text-overflow: ellipsis;
   white-space: nowrap;
   letter-spacing: -0.01em;
+  flex: 0 1 auto;
+}
+
+.file-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .file-info {
@@ -1965,12 +2022,21 @@ defineExpose({ editorRef, splitEditorRef, toggleOutline, scrollToLine, scrollPre
   background: var(--hover-bg, rgba(0,0,0,0.03));
   border-radius: 9999px;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  flex: 0 0 auto;
+}
+
+.file-info-date {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 13rem;
 }
 
 .top-bar-right {
   display: flex;
   align-items: center;
   gap: 0.375rem;
+  flex: 0 0 auto;
 }
 
 /* 图标按钮 - 悬停动画 */

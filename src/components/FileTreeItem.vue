@@ -154,6 +154,7 @@
           :get-children="getChildren"
           :get-sorted-files="getSortedFiles"
           :root-files="rootFiles"
+          :auto-rename-file-id="autoRenameFileId"
           @select="$emit('select', $event)"
           @toggle="$emit('toggle', $event)"
           @create-file="$emit('create-file', $event)"
@@ -166,6 +167,7 @@
           @toggleFavorite="$emit('toggleFavorite', $event)"
           @show-details="$emit('show-details', $event)"
           @context-open="$emit('context-open')"
+          @auto-rename-consumed="$emit('auto-rename-consumed', $event)"
         />
         <div
           v-if="children.length === 0"
@@ -291,7 +293,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onBeforeUnmount, onMounted } from 'vue'
+import { ref, computed, onBeforeUnmount, onMounted, watch } from 'vue'
 import FileHoverPreview from './FileHoverPreview.vue'
 
 const props = defineProps({
@@ -303,6 +305,7 @@ const props = defineProps({
   getChildren: Function,
   getSortedFiles: Function,
   rootFiles: Array,
+  autoRenameFileId: String,
   index: {
     type: Number,
     default: 0
@@ -321,7 +324,8 @@ const emit = defineEmits([
   'duplicate',
   'toggleFavorite',
   'show-details',
-  'context-open'
+  'context-open',
+  'auto-rename-consumed'
 ])
 
 const CLOSE_FILE_PREVIEW_EVENT = 'blur-editor-close-file-previews'
@@ -365,6 +369,16 @@ const selectedFolderId = ref(null)
 const isRenaming = ref(false)
 const renameValue = ref('')
 const renameInput = ref(null)
+
+watch(
+  () => props.autoRenameFileId,
+  (fileId) => {
+    if (fileId !== props.file.id || props.file.type !== 'folder') return
+    startRename()
+    emit('auto-rename-consumed', fileId)
+  },
+  { immediate: true, flush: 'post' }
+)
 
 function showContextMenu(e, file) {
   window.dispatchEvent(new CustomEvent(CLOSE_FILE_CONTEXT_MENUS_EVENT))

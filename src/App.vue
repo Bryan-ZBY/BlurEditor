@@ -24,6 +24,7 @@
           :sort-mode="fileSystem.sortMode.value"
           :sort-direction="fileSystem.sortDirection.value"
           :get-sorted-files="fileSystem.getSortedFiles"
+          :auto-rename-file-id="autoRenameFileId"
           @select-file="handleSelectFile"
           @create-file="handleCreateFile"
           @create-folder="handleCreateFolder"
@@ -39,6 +40,7 @@
           @set-sort-mode="handleSetSortMode"
           @toggleFavorite="handleToggleFavorite"
           @open-import="showImportModal = true"
+          @auto-rename-consumed="handleAutoRenameConsumed"
         />
       </div>
 
@@ -248,6 +250,7 @@ const splitEditorRef = computed(() => editorComponent.value?.splitEditorRef)
 const isPreviewMode = ref(false)
 const isFullscreenPreview = ref(false)
 const isZenMode = ref(false)
+const autoRenameFileId = ref(null)
 const isZenModeActive = computed(
   () => isZenMode.value && isPreviewMode.value
 )
@@ -267,7 +270,8 @@ const FILE_MANAGER_RESIZE_CLASS = 'file-manager-resize-active'
 const appRootStyle = computed(() => ({
   '--app-root-outside-bg': 'color-mix(in srgb, var(--editor-bg) 90%, var(--text-muted) 10%)'
 }))
-const appPreviewPageWidth = ref(clamp(parseInt(localStorage.getItem(PREVIEW_PAGE_WIDTH_KEY) || 100, 10), 40, 100))
+const DEFAULT_PREVIEW_PAGE_WIDTH = 80
+const appPreviewPageWidth = ref(clamp(parseInt(localStorage.getItem(PREVIEW_PAGE_WIDTH_KEY) || DEFAULT_PREVIEW_PAGE_WIDTH, 10), 40, 100))
 const isPreviewPageCentered = ref(localStorage.getItem(PREVIEW_PAGE_CENTERED_KEY) !== '0')
 const appViewportStyle = computed(() => {
   const widthPercent = clamp(appPreviewPageWidth.value, 40, 100)
@@ -277,7 +281,7 @@ const appViewportStyle = computed(() => {
     : { width }
 })
 const handleUpdatePreviewPageWidth = (value) => {
-  appPreviewPageWidth.value = clamp(parseInt(value || 100, 10), 40, 100)
+  appPreviewPageWidth.value = clamp(parseInt(value || DEFAULT_PREVIEW_PAGE_WIDTH, 10), 40, 100)
   localStorage.setItem(PREVIEW_PAGE_WIDTH_KEY, String(appPreviewPageWidth.value))
 }
 const handleUpdatePreviewPageCentered = (value) => {
@@ -471,7 +475,16 @@ function handleCreateFile(parentId) {
 }
 
 function handleCreateFolder(parentId) {
-  fileSystem.createFolder(parentId)
+  const newFolder = fileSystem.createFolder(parentId)
+  if (newFolder) {
+    autoRenameFileId.value = newFolder.id
+  }
+}
+
+function handleAutoRenameConsumed(fileId) {
+  if (autoRenameFileId.value === fileId) {
+    autoRenameFileId.value = null
+  }
 }
 
 function getDescendantFileIds(fileId) {
@@ -586,7 +599,7 @@ function handleToggleFavorite({ fileId }) {
 }
 
 function handleCreateFolderAtRoot() {
-  fileSystem.createFolder(null)
+  handleCreateFolder(null)
 }
 
 function handleSetSortMode(mode) {
