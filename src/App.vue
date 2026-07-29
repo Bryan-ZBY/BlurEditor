@@ -67,10 +67,8 @@
           :is-dark="isDark"
           :files="fileSystem.files.value"
           :preview-page-width="appPreviewPageWidth"
-          :preview-page-centered="isPreviewPageCentered"
           @update:content="handleUpdateContent"
           @update:previewPageWidth="handleUpdatePreviewPageWidth"
-          @update:previewPageCentered="handleUpdatePreviewPageCentered"
           @togglePreviewMode="togglePreviewMode"
           @toggleFullscreenPreview="toggleFullscreenPreview"
           @toggleZenMode="handleToggleZenMode"
@@ -257,7 +255,6 @@ const isZenModeActive = computed(
 const splitPosition = ref(50)
 const isResizing = ref(false)
 const PREVIEW_PAGE_WIDTH_KEY = 'blur_editor_preview_page_width'
-const PREVIEW_PAGE_CENTERED_KEY = 'blur_editor_preview_page_centered'
 const LAST_SEARCH_QUERY_KEY = 'blur_editor_last_search_query'
 const THEME_OPTIONS = [
   { id: 'lightgrey', title: '浅灰' },
@@ -272,21 +269,14 @@ const appRootStyle = computed(() => ({
 }))
 const DEFAULT_PREVIEW_PAGE_WIDTH = 80
 const appPreviewPageWidth = ref(clamp(parseInt(localStorage.getItem(PREVIEW_PAGE_WIDTH_KEY) || DEFAULT_PREVIEW_PAGE_WIDTH, 10), 40, 100))
-const isPreviewPageCentered = ref(localStorage.getItem(PREVIEW_PAGE_CENTERED_KEY) !== '0')
 const appViewportStyle = computed(() => {
   const widthPercent = clamp(appPreviewPageWidth.value, 40, 100)
   const width = `${widthPercent}%`
-  return isPreviewPageCentered.value
-    ? { width, marginLeft: 'auto', marginRight: 'auto' }
-    : { width }
+  return { width, marginLeft: 'auto', marginRight: 'auto' }
 })
 const handleUpdatePreviewPageWidth = (value) => {
   appPreviewPageWidth.value = clamp(parseInt(value || DEFAULT_PREVIEW_PAGE_WIDTH, 10), 40, 100)
   localStorage.setItem(PREVIEW_PAGE_WIDTH_KEY, String(appPreviewPageWidth.value))
-}
-const handleUpdatePreviewPageCentered = (value) => {
-  isPreviewPageCentered.value = !!value
-  localStorage.setItem(PREVIEW_PAGE_CENTERED_KEY, isPreviewPageCentered.value ? '1' : '0')
 }
 
 function getAppAlertTitle(type) {
@@ -1424,7 +1414,7 @@ watch(currentFileId, () => {
   border-radius: 0.75rem;
   font-size: 0.875rem;
   font-weight: 500;
-  box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.3), var(--surface-shadow);
   z-index: 1000;
   backdrop-filter: blur(8px);
 }

@@ -647,7 +647,7 @@ watch(() => props.visible, (visible) => {
 .drop-zone:hover {
   border-color: var(--accent-indigo, #6366f1);
   transform: translateY(-2px);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--surface-shadow-hover);
 }
 
 .drop-zone:hover .drop-icon {
@@ -659,7 +659,7 @@ watch(() => props.visible, (visible) => {
   border-style: solid;
   background: var(--modal-hover, rgba(99, 102, 241, 0.05));
   transform: scale(1.02);
-  box-shadow: 0 0 0 4px var(--accent-glow, rgba(99, 102, 241, 0.15)), 0 12px 32px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 0 0 4px var(--accent-glow, rgba(99, 102, 241, 0.15)), var(--surface-shadow-hover);
 }
 
 .drop-zone.is-dragging::before {

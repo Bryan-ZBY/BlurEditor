@@ -115,7 +115,7 @@ function formatDate(timestamp) {
   max-width: calc(100vw - 2rem);
   border-radius: 1rem;
   border: 1px solid;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--dialog-shadow);
   overflow: hidden;
   animation: scaleIn 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }

@@ -89,7 +89,7 @@ function handleRemove() {
 .tag-badge.clickable:hover {
   filter: brightness(0.95);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--surface-shadow-hover);
 }
 
 .tag-name {

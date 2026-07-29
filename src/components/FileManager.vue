@@ -973,7 +973,7 @@ function expandToFile(fileId, parentFolderIds) {
   min-width: 150px;
   padding: 0.45rem;
   border-radius: 0.625rem;
-  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(0,0,0,0.03);
+  box-shadow: var(--overlay-shadow);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   transform-origin: top left;

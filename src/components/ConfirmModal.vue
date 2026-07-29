@@ -77,7 +77,7 @@ defineEmits(['confirm', 'cancel'])
   max-width: calc(100vw - 2rem);
   background: var(--confirm-bg, #fff);
   border-radius: 1rem;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  box-shadow: var(--dialog-shadow);
   overflow: hidden;
   border: 1px solid var(--confirm-border, #e2e8f0);
   padding: 1.5rem;

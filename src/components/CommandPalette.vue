@@ -346,7 +346,7 @@ onMounted(() => {
   border: 1px solid var(--border-color, rgba(99, 102, 241, 0.2));
   background: rgba(15, 23, 42, 0.94);
   color: var(--text-primary, #e2e8f0);
-  box-shadow: 0 30px 80px -30px rgba(2, 6, 23, 0.75), 0 0 0 1px rgba(99, 102, 241, 0.14);
+  box-shadow: var(--dialog-shadow);
   backdrop-filter: blur(18px);
   overflow: hidden;
 }

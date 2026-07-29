@@ -267,7 +267,7 @@ defineExpose({ focus, blur })
   background: var(--tag-input-bg, #fff);
   border: 1px solid var(--tag-input-border, #e5e7eb);
   border-radius: 0.625rem;
-  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--overlay-shadow);
   z-index: 100;
   padding: 0.375rem;
 }

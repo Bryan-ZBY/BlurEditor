@@ -878,7 +878,7 @@ onBeforeUnmount(() => {
   min-width: 170px;
   padding: 0.5rem;
   border-radius: 0.625rem;
-  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(0,0,0,0.03);
+  box-shadow: var(--overlay-shadow);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   transform-origin: top left;
@@ -970,7 +970,7 @@ onBeforeUnmount(() => {
   max-width: calc(100vw - 2rem);
   border-radius: 1rem;
   border: 1px solid;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--dialog-shadow);
   overflow: hidden;
   animation: scaleIn 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }

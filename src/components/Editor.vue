@@ -237,16 +237,7 @@
                 />
               </div>
               <div class="setting-group setting-group-toggle">
-                <label>居中显示</label>
-                <label class="toggle-switch">
-                  <input type="checkbox" v-model="previewPageCentered" />
-                  <span class="toggle-track">
-                    <span class="toggle-thumb"></span>
-                  </span>
-                </label>
-              </div>
-              <div class="setting-group setting-group-toggle">
-                <label>文字阴影</label>
+                <label>{{ isDark ? '文字质感' : '文字阴影' }}</label>
                 <label class="toggle-switch">
                   <input type="checkbox" v-model="previewTextShadowEnabled" />
                   <span class="toggle-track">
@@ -255,7 +246,7 @@
                 </label>
               </div>
               <div class="setting-group shadow-strength-group" :class="{ disabled: !previewTextShadowEnabled }">
-                <label>阴影强度</label>
+                <label>{{ isDark ? '质感强度' : '阴影强度' }}</label>
                 <button
                   v-for="level in PREVIEW_TEXT_SHADOW_LEVELS"
                   :key="level"
@@ -403,8 +394,7 @@ const props = defineProps({
   isResizing: Boolean,
   isDark: Boolean,
   files: { type: Array, default: () => [] },
-  previewPageWidth: { type: Number, default: 80 },
-  previewPageCentered: { type: Boolean, default: true }
+  previewPageWidth: { type: Number, default: 80 }
 })
 
 const emit = defineEmits([
@@ -420,8 +410,7 @@ const emit = defineEmits([
   'exportWorkspace',
   'openPreviewHelp',
   'notify',
-  'update:previewPageWidth',
-  'update:previewPageCentered'
+  'update:previewPageWidth'
 ])
 
 const editorRef = ref(null)
@@ -464,7 +453,10 @@ const PREVIEW_SHADOW_NONE_STYLE = {
   '--preview-text-shadow': 'none',
   '--preview-heading-shadow': 'none',
   '--preview-text-filter': 'none',
-  '--preview-heading-filter': 'none'
+  '--preview-heading-filter': 'none',
+  '--preview-body-color': 'var(--text-primary)',
+  '--preview-heading-background': 'none',
+  '--preview-heading-fill': 'currentColor'
 }
 const normalizePreviewTextShadowLevel = (level) => {
   const numericLevel = Number(level)
@@ -481,10 +473,6 @@ const exportTableOfContentsTitle = ref('目录')
 const DEFAULT_PREVIEW_PAGE_WIDTH = 80
 const clampPreviewPageWidth = (value) => Math.max(40, Math.min(100, Number(value) || DEFAULT_PREVIEW_PAGE_WIDTH))
 const previewPageWidth = ref(clampPreviewPageWidth(props.previewPageWidth))
-const previewPageCentered = computed({
-  get: () => !!props.previewPageCentered,
-  set: (value) => emit('update:previewPageCentered', !!value)
-})
 
 const commitPreviewPageWidth = () => {
   emit('update:previewPageWidth', clampPreviewPageWidth(previewPageWidth.value))
@@ -616,14 +604,38 @@ const previewAreaStyle = computed(() => {
 })
 
 function buildPreviewShadowStyle(level, isDarkMode) {
-  if (!previewTextShadowEnabled.value || isDarkMode) {
-    return PREVIEW_SHADOW_NONE_STYLE
+  if (!previewTextShadowEnabled.value) {
+    return isDarkMode
+      ? PREVIEW_SHADOW_NONE_STYLE
+      : {
+          ...PREVIEW_SHADOW_NONE_STYLE,
+          '--preview-heading-background': 'linear-gradient(135deg, var(--text-primary) 0%, var(--accent-indigo) 100%)',
+          '--preview-heading-fill': 'transparent'
+        }
   }
 
   const intensity = normalizePreviewTextShadowLevel(level)
-  const textAlpha = [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4][intensity - 1]
-  const ambientAlpha = [0.07, 0.1, 0.14, 0.18, 0.22, 0.26, 0.3][intensity - 1]
-  const filterAlpha = [0.07, 0.1, 0.14, 0.18, 0.22, 0.26, 0.3][intensity - 1]
+  const intensityIndex = intensity - 1
+
+  if (isDarkMode) {
+    const bodyAccent = [2, 3, 4, 5, 6, 8, 10][intensityIndex]
+    const headingTopAccent = [6, 8, 10, 12, 14, 17, 20][intensityIndex]
+    const headingBottomAccent = [9, 12, 15, 18, 21, 25, 29][intensityIndex]
+
+    return {
+      '--preview-text-shadow': 'none',
+      '--preview-heading-shadow': 'none',
+      '--preview-text-filter': 'none',
+      '--preview-heading-filter': 'none',
+      '--preview-body-color': `color-mix(in srgb, var(--text-primary) ${100 - bodyAccent}%, var(--accent-indigo) ${bodyAccent}%)`,
+      '--preview-heading-background': `linear-gradient(180deg, color-mix(in srgb, var(--text-primary) ${100 - headingTopAccent}%, var(--accent-indigo) ${headingTopAccent}%) 0%, color-mix(in srgb, var(--text-primary) ${100 - headingBottomAccent}%, var(--accent-purple) ${headingBottomAccent}%) 100%)`,
+      '--preview-heading-fill': 'transparent'
+    }
+  }
+
+  const textAlpha = [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4][intensityIndex]
+  const ambientAlpha = [0.07, 0.1, 0.14, 0.18, 0.22, 0.26, 0.3][intensityIndex]
+  const filterAlpha = [0.07, 0.1, 0.14, 0.18, 0.22, 0.26, 0.3][intensityIndex]
   const nearY = [1, 1, 2, 2, 3, 3, 4][intensity - 1]
   const nearBlur = [1, 2, 2, 3, 4, 5, 6][intensity - 1]
   const farY = [4, 6, 8, 10, 12, 14, 16][intensity - 1]
@@ -640,7 +652,10 @@ function buildPreviewShadowStyle(level, isDarkMode) {
     '--preview-text-shadow': `0 ${nearY}px ${nearBlur}px rgba(${shadowColor}, ${textAlpha}), 0 ${farY}px ${farBlur}px rgba(${ambientColor}, ${ambientAlpha})`,
     '--preview-heading-shadow': `0 ${nearY + 1}px ${nearBlur + 3}px rgba(${shadowColor}, ${headingTextAlpha}), 0 ${farY + 4}px ${farBlur + 8}px rgba(${ambientColor}, ${headingAmbientAlpha})`,
     '--preview-text-filter': `drop-shadow(0 ${filterY}px ${filterBlur}px rgba(${shadowColor}, ${filterAlpha}))`,
-    '--preview-heading-filter': `drop-shadow(0 ${filterY + 3}px ${filterBlur + 2}px rgba(${shadowColor}, ${headingFilterAlpha}))`
+    '--preview-heading-filter': `drop-shadow(0 ${filterY + 3}px ${filterBlur + 2}px rgba(${shadowColor}, ${headingFilterAlpha}))`,
+    '--preview-body-color': 'var(--text-primary)',
+    '--preview-heading-background': 'linear-gradient(135deg, var(--text-primary) 0%, var(--accent-indigo) 100%)',
+    '--preview-heading-fill': 'transparent'
   }
 }
 
@@ -1892,7 +1907,7 @@ defineExpose({ editorRef, splitEditorRef, toggleOutline, scrollToLine, scrollPre
   border-radius: 999px;
   background: var(--glass-bg, rgba(255, 255, 255, 0.78));
   color: var(--text-primary, #111827);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16), 0 0 0 1px var(--glass-border, rgba(107, 114, 128, 0.2));
+  box-shadow: var(--surface-shadow);
   backdrop-filter: var(--glass-backdrop, blur(16px) saturate(1.2));
   -webkit-backdrop-filter: var(--glass-backdrop, blur(16px) saturate(1.2));
   cursor: pointer;
@@ -1911,7 +1926,7 @@ defineExpose({ editorRef, splitEditorRef, toggleOutline, scrollToLine, scrollPre
 .zen-exit-floating-btn:hover {
   border-color: var(--accent-indigo, #6366f1);
   background: var(--menu-bg, #fff);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2), 0 0 0 1px var(--accent-glow, rgba(99, 102, 241, 0.2));
+  box-shadow: 0 0 0 1px var(--accent-glow, rgba(99, 102, 241, 0.2)), var(--surface-shadow-hover);
   transform: translateY(-1px);
 }
 
@@ -2071,7 +2086,7 @@ defineExpose({ editorRef, splitEditorRef, toggleOutline, scrollToLine, scrollPre
   color: var(--text-primary, #111827);
   border-color: var(--border-color, rgba(0,0,0,0.08));
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--surface-shadow-hover);
 }
 
 .icon-btn:hover::after {
@@ -2140,7 +2155,7 @@ defineExpose({ editorRef, splitEditorRef, toggleOutline, scrollToLine, scrollPre
   background: var(--icon-btn-hover, rgba(0,0,0,0.06));
   border-color: var(--border-color, rgba(0,0,0,0.1));
   transform: translateY(-1px);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--surface-shadow-hover);
 }
 
 .preview-btn:hover::before {
@@ -2177,7 +2192,7 @@ defineExpose({ editorRef, splitEditorRef, toggleOutline, scrollToLine, scrollPre
   background: var(--menu-bg, #fff);
   border: 1px solid var(--menu-border, #e5e7eb);
   border-radius: 0.75rem;
-  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(0,0,0,0.05);
+  box-shadow: var(--overlay-shadow);
   z-index: 50;
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
@@ -2485,7 +2500,7 @@ defineExpose({ editorRef, splitEditorRef, toggleOutline, scrollToLine, scrollPre
   background: var(--menu-hover, #f3f4f6);
   color: var(--text-primary, #111827);
   border-color: var(--accent-indigo, #6366f1);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--surface-shadow-hover);
 }
 
 .toolbar-icon-btn svg {
@@ -2547,7 +2562,7 @@ defineExpose({ editorRef, splitEditorRef, toggleOutline, scrollToLine, scrollPre
   border-radius: 0.75rem;
   background: var(--menu-bg, #fff);
   border: 1px solid var(--menu-border, #e5e7eb);
-  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--overlay-shadow);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   z-index: 20;
@@ -2707,7 +2722,7 @@ defineExpose({ editorRef, splitEditorRef, toggleOutline, scrollToLine, scrollPre
   display: flex;
   justify-content: center;
   align-items: center;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  box-shadow: var(--surface-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 
 :deep(.mermaid-chart) {
