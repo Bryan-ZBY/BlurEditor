@@ -106,10 +106,31 @@
       </div>
     </div>
 
+    <Transition name="external-file-drop">
+      <div
+        v-if="isExternalFileDragging"
+        class="external-file-drop-overlay"
+        role="status"
+        aria-live="polite"
+        aria-label="松开鼠标即可导入文件"
+      >
+        <div class="external-file-drop-card">
+          <div class="external-file-drop-icon" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+          </div>
+          <strong>松开即可导入文件</strong>
+          <span>支持 Markdown、纯文本、HTML 和工作区 JSON</span>
+        </div>
+      </div>
+    </Transition>
+
     <!-- 导入文件弹窗 -->
     <Transition name="modal">
       <ImportModal
         v-if="showImportModal"
+        ref="importModalRef"
         :visible="showImportModal"
         :is-dark="isDark"
         @close="showImportModal = false"
@@ -220,9 +241,11 @@ const clamp = (value, min, max) => Math.max(min, Math.min(max, value))
 const appRootRef = ref(null)
 const appViewportRef = ref(null)
 const editorAreaRef = ref(null)
+const importModalRef = ref(null)
 const getViewportRect = () => appViewportRef.value?.getBoundingClientRect() || null
 
 const showImportModal = ref(false)
+const isExternalFileDragging = ref(false)
 const showSaveNotification = ref(false)
 const showCommandPalette = ref(false)
 const showPreviewHelp = ref(false)
@@ -239,6 +262,7 @@ const confirmDialog = ref({
   confirmVariant: 'danger'
 })
 let confirmDialogResolver = null
+let externalFileDragDepth = 0
 
 const editorComponent = ref(null)
 const fileManagerRef = ref(null)
@@ -803,6 +827,58 @@ function handleImport(payload) {
   }
 }
 
+function isExternalFileDrag(event) {
+  return Array.from(event?.dataTransfer?.types || []).includes('Files')
+}
+
+function resetExternalFileDrag() {
+  externalFileDragDepth = 0
+  isExternalFileDragging.value = false
+}
+
+function handleExternalFileDragEnter(event) {
+  if (!isExternalFileDrag(event)) return
+  event.preventDefault()
+  event.stopPropagation()
+  externalFileDragDepth += 1
+  isExternalFileDragging.value = true
+}
+
+function handleExternalFileDragOver(event) {
+  if (!isExternalFileDrag(event)) return
+  event.preventDefault()
+  event.stopPropagation()
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = 'copy'
+  }
+}
+
+function handleExternalFileDragLeave(event) {
+  if (!isExternalFileDragging.value) return
+  event.preventDefault()
+  event.stopPropagation()
+  externalFileDragDepth = Math.max(0, externalFileDragDepth - 1)
+  if (externalFileDragDepth === 0) {
+    isExternalFileDragging.value = false
+  }
+}
+
+async function handleExternalFileDrop(event) {
+  if (!isExternalFileDrag(event)) return
+  event.preventDefault()
+  event.stopPropagation()
+
+  const files = Array.from(event.dataTransfer?.files || [])
+  resetExternalFileDrag()
+  if (files.length === 0) return
+
+  showCommandPalette.value = false
+  showPreviewHelp.value = false
+  showImportModal.value = true
+  await nextTick()
+  await importModalRef.value?.importFiles(files)
+}
+
 async function handleRestoreImportBackup() {
   const backup = fileSystem.importBackupInfo.value
   if (!backup) {
@@ -1106,10 +1182,20 @@ onMounted(() => {
   const validFileIds = fileSystem.files.value.filter(f => f.type === 'file').map(f => f.id)
   validateTabs(validFileIds)
   syncDisplayModeForFile(currentFileId.value)
+  window.addEventListener('dragenter', handleExternalFileDragEnter, true)
+  window.addEventListener('dragover', handleExternalFileDragOver, true)
+  window.addEventListener('dragleave', handleExternalFileDragLeave, true)
+  window.addEventListener('drop', handleExternalFileDrop, true)
+  window.addEventListener('blur', resetExternalFileDrag)
 })
 
 onUnmounted(() => {
   stopFileManagerResize()
+  window.removeEventListener('dragenter', handleExternalFileDragEnter, true)
+  window.removeEventListener('dragover', handleExternalFileDragOver, true)
+  window.removeEventListener('dragleave', handleExternalFileDragLeave, true)
+  window.removeEventListener('drop', handleExternalFileDrop, true)
+  window.removeEventListener('blur', resetExternalFileDrag)
   appAlertTimers.forEach((timer) => window.clearTimeout(timer))
   appAlertTimers.clear()
   if (confirmDialogResolver) {
@@ -1123,6 +1209,100 @@ watch(currentFileId, () => {
 </script>
 
 <style scoped>
+.external-file-drop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  pointer-events: none;
+  background: color-mix(in srgb, var(--bg-primary, #f8fafc) 72%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.external-file-drop-overlay::before {
+  content: '';
+  position: absolute;
+  inset: 1rem;
+  border: 2px dashed var(--accent-indigo, #6366f1);
+  border-radius: 1.25rem;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent-indigo, #6366f1) 18%, transparent);
+}
+
+.external-file-drop-card {
+  position: relative;
+  display: flex;
+  min-width: min(26rem, calc(100vw - 4rem));
+  flex-direction: column;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 2rem;
+  border: 1px solid color-mix(in srgb, var(--accent-indigo, #6366f1) 28%, transparent);
+  border-radius: 1rem;
+  background: var(--bg-secondary, #ffffff);
+  color: var(--text-primary, #0f172a);
+  box-shadow: 0 24px 64px color-mix(in srgb, var(--accent-indigo, #6366f1) 20%, transparent);
+}
+
+.external-file-drop-icon {
+  display: grid;
+  width: 3.5rem;
+  height: 3.5rem;
+  place-items: center;
+  margin-bottom: 0.25rem;
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--accent-indigo, #6366f1) 12%, transparent);
+  color: var(--accent-indigo, #6366f1);
+}
+
+.external-file-drop-icon svg {
+  width: 2rem;
+  height: 2rem;
+}
+
+.external-file-drop-card strong {
+  font-size: 1.125rem;
+  font-weight: 700;
+}
+
+.external-file-drop-card span {
+  color: var(--text-secondary, #475569);
+  font-size: 0.875rem;
+}
+
+.external-file-drop-enter-active,
+.external-file-drop-leave-active {
+  transition: opacity 0.18s ease;
+}
+
+.external-file-drop-enter-active .external-file-drop-card,
+.external-file-drop-leave-active .external-file-drop-card {
+  transition: transform 0.18s ease, opacity 0.18s ease;
+}
+
+.external-file-drop-enter-from,
+.external-file-drop-leave-to,
+.external-file-drop-enter-from .external-file-drop-card,
+.external-file-drop-leave-to .external-file-drop-card {
+  opacity: 0;
+}
+
+.external-file-drop-enter-from .external-file-drop-card,
+.external-file-drop-leave-to .external-file-drop-card {
+  transform: translateY(8px) scale(0.98);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .external-file-drop-enter-active,
+  .external-file-drop-leave-active,
+  .external-file-drop-enter-active .external-file-drop-card,
+  .external-file-drop-leave-active .external-file-drop-card {
+    transition: none;
+  }
+}
+
 .app-root {
   background: var(--app-root-outside-bg, color-mix(in srgb, var(--editor-bg) 90%, var(--text-muted) 10%));
   transition: background var(--transition-normal) ease;

@@ -12,7 +12,7 @@
               </div>
               <h3>导入文件</h3>
             </div>
-            <button class="close-btn" @click="handleClose" title="关闭">
+            <button class="close-btn" @click="handleClose" title="关闭" aria-label="关闭导入文件弹窗">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
               </svg>
@@ -20,7 +20,7 @@
           </div>
 
           <div class="modal-body">
-            <div v-if="importError" class="import-error">
+            <div v-if="importError" class="import-error" role="alert" aria-live="polite">
               {{ importError }}
             </div>
 
@@ -99,6 +99,11 @@
               @dragleave="isDragging = false"
               @drop.prevent="handleDrop"
               @click="triggerFileInput"
+              @keydown.enter.prevent="triggerFileInput"
+              @keydown.space.prevent="triggerFileInput"
+              role="button"
+              tabindex="0"
+              aria-describedby="import-file-help"
             >
               <div class="drop-icon-wrapper">
                 <svg class="drop-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -107,7 +112,7 @@
                 <div class="drop-icon-glow"></div>
               </div>
               <p class="drop-title">点击或拖拽文件到此处</p>
-              <span class="drop-subtitle">支持 Markdown、纯文本、HTML、工作区 JSON 格式</span>
+              <span id="import-file-help" class="drop-subtitle">支持 Markdown、纯文本、HTML、工作区 JSON 格式</span>
               <div class="file-types">
                 <span class="file-badge">.md</span>
                 <span class="file-badge">.txt</span>
@@ -285,6 +290,8 @@ async function importFiles(fileList) {
     emit('import', results)
   }
 }
+
+defineExpose({ importFiles })
 
 watch(() => props.visible, (visible) => {
   if (!visible) resetState()

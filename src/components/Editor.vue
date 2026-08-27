@@ -464,7 +464,7 @@ const normalizePreviewTextShadowLevel = (level) => {
     ? numericLevel
     : DEFAULT_PREVIEW_TEXT_SHADOW_LEVEL
 }
-const previewTextShadowEnabled = ref(localStorage.getItem(PREVIEW_TEXT_SHADOW_ENABLED_KEY) !== '0')
+const previewTextShadowEnabled = ref(localStorage.getItem(PREVIEW_TEXT_SHADOW_ENABLED_KEY) === '1')
 const previewTextShadowLevel = ref(normalizePreviewTextShadowLevel(localStorage.getItem(PREVIEW_TEXT_SHADOW_LEVEL_KEY)))
 const exportThemeMode = ref('current')
 const exportIncludeTableOfContents = ref(true)
