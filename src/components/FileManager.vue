@@ -118,16 +118,39 @@
     </div>
 
     <div v-if="recentList.length > 0" class="fm-quick-list">
-      <div class="fm-quick-title">最近打开</div>
-      <div
-        v-for="file in recentList"
-        :key="file.id"
-        class="fm-quick-item"
-        @click="handleQuickSelect(file.id)"
+      <button
+        type="button"
+        class="fm-quick-title fm-quick-toggle"
+        :aria-expanded="showRecent"
+        :aria-label="showRecent ? '折叠最近打开列表' : '展开最近打开列表'"
+        @click="showRecent = !showRecent"
       >
-        <span class="quick-dot recent"></span>
-        <FileHoverPreview :file="file" :is-dark="isDark" name-class="truncate" />
-      </div>
+        <span>最近打开</span>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="fm-quick-chevron"
+          :class="{ open: showRecent }"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          aria-hidden="true"
+        >
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+        </svg>
+      </button>
+      <Transition name="quick-collapse">
+        <div v-if="showRecent" class="fm-quick-items">
+          <div
+            v-for="file in recentList"
+            :key="file.id"
+            class="fm-quick-item"
+            @click="handleQuickSelect(file.id)"
+          >
+            <span class="quick-dot recent"></span>
+            <FileHoverPreview :file="file" :is-dark="isDark" name-class="truncate" />
+          </div>
+        </div>
+      </Transition>
     </div>
 
     <div
@@ -329,6 +352,7 @@ const showNewMenu = ref(false)
 const showArchived = ref(false)
 const showSortMenu = ref(false)
 const showFavorites = ref(true)
+const showRecent = ref(true)
 const searchText = ref('')
 const expandedIds = ref(new Set())
 const isRootDragOver = ref(false)
@@ -831,6 +855,62 @@ function expandToFile(fileId, parentFolderIds) {
   border-bottom: 1px solid var(--border-color, rgba(148, 163, 184, 0.18));
 }
 
+.fm-quick-toggle {
+  width: 100%;
+  min-height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: none;
+  border-right: none;
+  border-left: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: color 0.16s ease, background 0.16s ease, border-color 0.16s ease;
+}
+
+.fm-quick-toggle:hover {
+  color: var(--text-primary, #e2e8f0);
+  background: var(--hover-bg, rgba(148, 163, 184, 0.08));
+}
+
+.fm-quick-toggle:focus-visible {
+  outline: 2px solid var(--accent-indigo, #60a5fa);
+  outline-offset: -2px;
+}
+
+.fm-quick-toggle[aria-expanded='false'] {
+  border-bottom-color: transparent;
+}
+
+.fm-quick-chevron {
+  width: 0.85rem;
+  height: 0.85rem;
+  flex-shrink: 0;
+  transform: rotate(0deg);
+  transition: transform 0.2s ease;
+}
+
+.fm-quick-chevron.open {
+  transform: rotate(90deg);
+}
+
+.quick-collapse-enter-active {
+  transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+}
+
+.quick-collapse-leave-active {
+  transition: opacity 0.14s ease-in, transform 0.14s ease-in;
+}
+
+.quick-collapse-enter-from,
+.quick-collapse-leave-to {
+  opacity: 0;
+  transform: translateY(-0.25rem);
+}
+
 .fm-quick-item {
   display: flex;
   align-items: center;
@@ -856,6 +936,15 @@ function expandToFile(fileId, parentFolderIds) {
   background: var(--text-muted, #94a3b8);
   box-shadow: 0 0 0 3px var(--hover-bg, rgba(148, 163, 184, 0.1));
   opacity: 0.78;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fm-quick-toggle,
+  .fm-quick-chevron,
+  .quick-collapse-enter-active,
+  .quick-collapse-leave-active {
+    transition: none;
+  }
 }
 
 .fm-search-results {

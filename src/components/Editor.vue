@@ -100,62 +100,9 @@
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
                     </svg>
-                    <span>导出 HTML（带目录）</span>
-                  </div>
-                  <div class="export-item" @click="handleExport('html-no-toc')">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
-                    </svg>
-                    <span>导出 HTML（无目录）</span>
-                  </div>
-                  <div class="export-item" @click="handleExport('html-offline')">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 17h6a2 2 0 002-2V7a2 2 0 00-2-2h-1M9 17a2 2 0 01-2-2V9m0 10H7a2 2 0 01-2-2V7a2 2 0 012-2h1m5 2h5v5M9 7H7a2 2 0 00-2 2v8a2 2 0 002 2h1"/>
-                    </svg>
-                    <span>导出离线 HTML</span>
+                    <span>导出 HTML</span>
                   </div>
                   <div class="export-divider"></div>
-                  <div class="export-item" @click="handleExport('pdf')">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M4 7v14m0 0h16M4 7h16M7 7V3h10v4"/>
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M8 14h8m-8 3h8m-8 3h4"/>
-                    </svg>
-                    <span>导出 PDF</span>
-                  </div>
-                  <div class="export-divider"></div>
-                  <div class="export-settings">
-                    <div class="export-settings-title">导出样式（应用到 HTML/PDF）</div>
-                    <label class="export-setting-item">
-                      <span>目录标题</span>
-                      <input
-                        v-model="exportTableOfContentsTitle"
-                        class="export-inline-input"
-                        placeholder="目录"
-                      />
-                    </label>
-                    <label class="export-setting-item">
-                      <input type="checkbox" v-model="exportIncludeTableOfContents" />
-                      <span>包含目录</span>
-                    </label>
-                    <label class="export-setting-item">
-                      <input type="checkbox" v-model="exportOfflineMode" />
-                      <span>离线 HTML（不联网）</span>
-                    </label>
-                    <label class="export-setting-item">
-                      <span>主题</span>
-                      <div class="export-chip-group">
-                        <button
-                          v-for="item in exportThemeModeList"
-                          :key="item.value"
-                          @click.stop="setExportThemeMode(item.value)"
-                          class="export-chip"
-                          :class="{ active: exportThemeMode === item.value }"
-                        >
-                          {{ item.label }}
-                        </button>
-                      </div>
-                    </label>
-                  </div>
                   <div class="export-item" @click="handleExport('workspace')">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
@@ -382,7 +329,7 @@ import EditorTabs from './EditorTabs.vue'
 import DocumentOutline from './DocumentOutline.vue'
 
 import { useTabs } from '../composables/useTabs.js'
-import { exportAsMarkdown, exportAsHTML, exportAsPDF, exportAsPlainText, copyAsRichText } from '../utils/exportUtils.js'
+import { exportAsMarkdown, exportAsHTML, exportAsPlainText, copyAsRichText } from '../utils/exportUtils.js'
 
 const props = defineProps({
   content: String,
@@ -466,10 +413,6 @@ const normalizePreviewTextShadowLevel = (level) => {
 }
 const previewTextShadowEnabled = ref(localStorage.getItem(PREVIEW_TEXT_SHADOW_ENABLED_KEY) === '1')
 const previewTextShadowLevel = ref(normalizePreviewTextShadowLevel(localStorage.getItem(PREVIEW_TEXT_SHADOW_LEVEL_KEY)))
-const exportThemeMode = ref('current')
-const exportIncludeTableOfContents = ref(true)
-const exportOfflineMode = ref(false)
-const exportTableOfContentsTitle = ref('目录')
 const DEFAULT_PREVIEW_PAGE_WIDTH = 80
 const clampPreviewPageWidth = (value) => Math.max(40, Math.min(100, Number(value) || DEFAULT_PREVIEW_PAGE_WIDTH))
 const previewPageWidth = ref(clampPreviewPageWidth(props.previewPageWidth))
@@ -805,28 +748,17 @@ watch(previewTextShadowLevel, (level) => {
   localStorage.setItem(PREVIEW_TEXT_SHADOW_LEVEL_KEY, String(normalizePreviewTextShadowLevel(level)))
 })
 
-const exportThemeModeList = [
-  { value: 'current', label: '跟随当前' },
-  { value: 'light', label: '浅色' },
-  { value: 'dark', label: '深色' }
-]
-
 const exportStyleOptions = computed(() => {
-  const isDarkForExport = exportThemeMode.value === 'current'
-    ? !!props.isDark
-    : exportThemeMode.value === 'dark'
-
   return {
-    isDark: isDarkForExport,
-    themeMode: exportThemeMode.value,
+    isDark: !!props.isDark,
+    themeMode: 'current',
     previewFont: previewFont.value,
     previewFontSize: previewFontSize.value,
     previewLineHeight: previewLineHeight.value,
     previewPageWidth: previewPageWidth.value,
-    includeTableOfContents: exportIncludeTableOfContents.value,
-    tableOfContentsTitle: exportTableOfContentsTitle.value,
-    offline: exportOfflineMode.value,
-    includeExternalLinks: !exportOfflineMode.value,
+    includeTableOfContents: false,
+    offline: false,
+    includeExternalLinks: true,
     title: props.currentFile?.name || 'document.md'
   }
 })
@@ -840,10 +772,6 @@ function buildExportOptions(overrides = {}) {
 
 function notify(message, type = 'info') {
   emit('notify', { message, type })
-}
-
-function setExportThemeMode(mode) {
-  exportThemeMode.value = mode
 }
 
 const handleInput = (e) => {
@@ -1779,16 +1707,7 @@ function handleExport(format) {
       exportAsMarkdown(props.content, fileName)
       break
     case 'html':
-      exportAsHTML(props.content, fileName, buildExportOptions({ title: htmlTitle, includeTableOfContents: true }))
-      break
-    case 'html-no-toc':
-      exportAsHTML(props.content, fileName, buildExportOptions({ includeTableOfContents: false }))
-      break
-    case 'html-offline':
-      exportAsHTML(props.content, fileName, buildExportOptions({ offline: true, includeExternalLinks: false }))
-      break
-    case 'pdf':
-      exportAsPDF(props.content, fileName, buildExportOptions({ title: htmlTitle, onNotify: notify }))
+      exportAsHTML(props.content, fileName, buildExportOptions({ title: htmlTitle }))
       break
     case 'txt':
       exportAsPlainText(props.content, fileName)
@@ -2231,71 +2150,6 @@ defineExpose({ editorRef, splitEditorRef, toggleOutline, scrollToLine, scrollPre
   height: 1px;
   margin: 0.375rem 0.5rem;
   background: var(--menu-border, #e5e7eb);
-}
-
-.export-settings {
-  padding: 0.35rem 0.75rem 0.35rem;
-}
-
-.export-settings-title {
-  font-size: 0.72rem;
-  color: var(--text-muted, #6b7280);
-  margin: 0 0 0.45rem;
-}
-
-.export-setting-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  font-size: 0.75rem;
-  color: var(--text-secondary, #64748b);
-  padding: 0.35rem 0;
-}
-
-.export-setting-item input[type="checkbox"] {
-  width: 0.95rem;
-  height: 0.95rem;
-}
-
-.export-inline-input {
-  min-width: 0;
-  flex: 1;
-  max-width: 8.5rem;
-  border: 1px solid var(--menu-border, #e5e7eb);
-  border-radius: 0.45rem;
-  background: transparent;
-  color: var(--text-primary, #111827);
-  font-size: 0.74rem;
-  padding: 0.2rem 0.4rem;
-}
-
-.export-chip-group {
-  display: flex;
-  gap: 0.3rem;
-}
-
-.export-chip {
-  appearance: none;
-  border: 1px solid var(--menu-border, #e5e7eb);
-  background: transparent;
-  color: var(--text-secondary, #64748b);
-  border-radius: 999px;
-  padding: 0.2rem 0.6rem;
-  font-size: 0.7rem;
-  line-height: 1;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.export-chip:hover {
-  background: var(--menu-hover, rgba(0, 0, 0, 0.04));
-}
-
-.export-chip.active {
-  border-color: var(--accent-indigo, #6366f1);
-  background: var(--icon-btn-active, rgba(99, 102, 241, 0.14));
-  color: var(--accent-indigo, #6366f1);
 }
 
 /* 菜单动画 */
