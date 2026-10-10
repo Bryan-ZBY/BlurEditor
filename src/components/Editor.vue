@@ -310,18 +310,71 @@
       <DocumentOutline
         v-if="showOutline"
         :content="content"
-        :isDark="isDark"
+        :is-dark="isDark"
         :active-heading-id="activeHeadingId"
         @scrollToHeading="handleScrollToHeading"
       />
     </div>
+
+    <!-- Mermaid 全屏查看器 -->
+    <Transition name="fade-scale">
+      <div
+        v-if="mermaidViewer.open"
+        class="mermaid-viewer"
+        :class="{ panning: mermaidViewer.panning }"
+        @wheel="handleMermaidViewerWheel"
+        @pointerdown="handleMermaidViewerPointerDown"
+        @pointermove="handleMermaidViewerPointerMove"
+        @pointerup="handleMermaidViewerPointerUp"
+        @pointercancel="handleMermaidViewerPointerUp"
+        @click="handleMermaidViewerClick"
+        @dblclick="handleMermaidViewerDblClick"
+      >
+        <div ref="mermaidViewerStageRef" class="mermaid-viewer-stage">
+          <div
+            ref="mermaidViewerHostRef"
+            class="mermaid-viewer-host"
+            :style="mermaidViewerHostStyle"
+          ></div>
+        </div>
+
+        <div class="mermaid-viewer-hint">滚轮缩放 · 拖拽移动 · 双击复位 · Esc 关闭</div>
+
+        <div class="mermaid-viewer-toolbar" @pointerdown.stop @dblclick.stop>
+          <button type="button" class="mv-btn" title="缩小" @click="zoomMermaidViewerStep(1 / 1.25)">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14"/></svg>
+          </button>
+          <button type="button" class="mv-zoom-label" title="点击复位缩放" @click="fitMermaidViewer">
+            {{ Math.round(mermaidViewer.scale * 100) }}%
+          </button>
+          <button type="button" class="mv-btn" title="放大" @click="zoomMermaidViewerStep(1.25)">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14"/></svg>
+          </button>
+          <span class="mv-divider"></span>
+          <button type="button" class="mv-btn" title="适配窗口" @click="fitMermaidViewer">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg>
+          </button>
+        </div>
+
+        <button
+          type="button"
+          class="mermaid-viewer-close"
+          title="关闭 (Esc)"
+          @pointerdown.stop
+          @click.stop="closeMermaidViewer"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+    </Transition>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch, nextTick, getCurrentInstance } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick, getCurrentInstance } from 'vue'
 import { marked } from 'marked'
 import hljs from 'highlight.js'
+import hljsThemeCss from 'highlight.js/styles/github-dark.css?inline'
 import mermaid from 'mermaid'
 import { useOutlineParser } from '../composables/useOutlineParser.js'
 
@@ -440,7 +493,6 @@ const getPreviewEl = () => instance?.refs?.previewRef
 const getSplitEditorEl = () => instance?.refs?.splitEditorRef
 
 // 加载 highlight.js 高亮主题并应用代码样式
-let hljsStyleEl = null
 let previewHighlightTimer = null
 let previewSearchActiveIndex = -1
 let previewSearchActiveQuery = ''
@@ -457,22 +509,12 @@ let previewHoldScrollKey = ''
 let previewHoldScrollLastTime = null
 const PREVIEW_HOLD_SCROLL_START_DELAY = 85
 const PREVIEW_HOLD_SCROLL_LINES_PER_SECOND = 18
-function loadHljsTheme(isDark) {
+function loadHljsTheme() {
   document.querySelectorAll('[data-hljs-theme]').forEach(el => el.remove())
-  
-  const theme = 'github-dark'
-  hljsStyleEl = document.createElement('link')
-  hljsStyleEl.rel = 'stylesheet'
-  hljsStyleEl.setAttribute('data-hljs-theme', theme)
-  
-  const localPath = `../../node_modules/highlight.js/styles/${theme}.css`
-  import(localPath).then(() => {
-    hljsStyleEl.href = localPath
-    document.head.appendChild(hljsStyleEl)
-  }).catch(() => {
-    hljsStyleEl.href = `https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/${theme}.min.css`
-    document.head.appendChild(hljsStyleEl)
-  })
+  const style = document.createElement('style')
+  style.setAttribute('data-hljs-theme', 'github-dark')
+  style.textContent = hljsThemeCss
+  document.head.appendChild(style)
 }
 
 const renderer = new marked.Renderer()
@@ -982,6 +1024,18 @@ async function renderMermaid() {
       wrapper.innerHTML = '<div class="mermaid-chart">' + svg + '</div>'
       wrapper.setAttribute('data-processed', 'true')
 
+      const expandBtn = document.createElement('button')
+      expandBtn.type = 'button'
+      expandBtn.className = 'mermaid-expand-btn'
+      expandBtn.title = '全屏查看'
+      expandBtn.setAttribute('aria-label', '全屏查看图表')
+      expandBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/></svg>'
+      expandBtn.addEventListener('click', (e) => {
+        e.stopPropagation()
+        openMermaidViewer(wrapper)
+      })
+      wrapper.appendChild(expandBtn)
+
       block.parentNode.insertBefore(wrapper, block)
       block.style.display = 'none'
       block.setAttribute('data-processed', 'true')
@@ -1006,6 +1060,199 @@ const mermaidResizeHandler = () => {
   requestAnimationFrame(() => {
     fitAllMermaidCharts()
   })
+}
+
+const mermaidViewerStageRef = ref(null)
+const mermaidViewerHostRef = ref(null)
+const mermaidViewer = reactive({
+  open: false,
+  scale: 1,
+  x: 0,
+  y: 0,
+  panning: false
+})
+
+let mermaidViewerState = null
+let mermaidViewerDrag = null
+let mermaidViewerSuppressClick = false
+
+const mermaidViewerHostStyle = computed(() => ({
+  transform: `translate(${mermaidViewer.x}px, ${mermaidViewer.y}px) scale(${mermaidViewer.scale})`
+}))
+
+function openMermaidViewer(wrapper) {
+  const chart = wrapper.querySelector('.mermaid-chart')
+  const svg = chart?.querySelector('svg')
+  if (!chart || !svg || mermaidViewer.open) return
+
+  const size = getMermaidSvgSize(svg)
+  const width = Math.max(1, Math.round(size?.width || 800))
+  const height = Math.max(1, Math.round(size?.height || 600))
+
+  mermaidViewerState = {
+    wrapper,
+    chart,
+    svg,
+    prevStyle: svg.getAttribute('style')
+  }
+
+  svg.style.width = `${width}px`
+  svg.style.height = `${height}px`
+  svg.style.maxWidth = 'none'
+  svg.style.maxHeight = 'none'
+
+  mermaidViewer.open = true
+  mermaidViewer.scale = 1
+  mermaidViewer.x = 0
+  mermaidViewer.y = 0
+  mermaidViewer.panning = false
+  mermaidViewerDrag = null
+  mermaidViewerSuppressClick = false
+
+  nextTick(() => {
+    const host = mermaidViewerHostRef.value
+    if (!host || !mermaidViewerState) return
+    host.appendChild(mermaidViewerState.svg)
+    fitMermaidViewer()
+  })
+
+  window.addEventListener('keydown', handleMermaidViewerKeydown, true)
+}
+
+function closeMermaidViewer() {
+  if (!mermaidViewer.open) return
+
+  mermaidViewer.open = false
+  window.removeEventListener('keydown', handleMermaidViewerKeydown, true)
+
+  const state = mermaidViewerState
+  mermaidViewerState = null
+  mermaidViewerDrag = null
+  if (!state) return
+
+  if (state.svg.isConnected && state.chart.isConnected) {
+    if (state.prevStyle == null) {
+      state.svg.removeAttribute('style')
+    } else {
+      state.svg.setAttribute('style', state.prevStyle)
+    }
+    state.chart.appendChild(state.svg)
+    requestAnimationFrame(() => {
+      if (state.wrapper.isConnected) fitMermaidToContainer(state.wrapper)
+    })
+  }
+}
+
+function handleMermaidViewerKeydown(e) {
+  if (!mermaidViewer.open || e.key !== 'Escape') return
+  e.preventDefault()
+  e.stopPropagation()
+  closeMermaidViewer()
+}
+
+function fitMermaidViewer() {
+  const stage = mermaidViewerStageRef.value
+  const svg = mermaidViewerState?.svg
+  if (!stage || !svg) return
+
+  const size = getMermaidSvgSize(svg)
+  if (!size) return
+
+  const availW = stage.clientWidth
+  const availH = stage.clientHeight
+  if (!availW || !availH) return
+
+  const scale = Math.min((availW * 0.92) / size.width, (availH * 0.86) / size.height)
+  mermaidViewer.scale = Math.min(4, Math.max(0.02, scale))
+  mermaidViewer.x = 0
+  mermaidViewer.y = 0
+}
+
+function zoomMermaidViewerAt(clientX, clientY, factor) {
+  const stage = mermaidViewerStageRef.value
+  if (!stage) return
+
+  const rect = stage.getBoundingClientRect()
+  const cx = clientX - rect.left - rect.width / 2
+  const cy = clientY - rect.top - rect.height / 2
+
+  const prev = mermaidViewer.scale
+  const next = Math.min(8, Math.max(0.02, prev * factor))
+  if (next === prev) return
+
+  const ratio = next / prev
+  mermaidViewer.x = cx - ratio * (cx - mermaidViewer.x)
+  mermaidViewer.y = cy - ratio * (cy - mermaidViewer.y)
+  mermaidViewer.scale = next
+}
+
+function handleMermaidViewerWheel(e) {
+  e.preventDefault()
+  const delta = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY
+  zoomMermaidViewerAt(e.clientX, e.clientY, Math.exp(-delta * 0.0015))
+}
+
+function zoomMermaidViewerStep(factor) {
+  const stage = mermaidViewerStageRef.value
+  if (!stage) return
+  const rect = stage.getBoundingClientRect()
+  zoomMermaidViewerAt(rect.left + rect.width / 2, rect.top + rect.height / 2, factor)
+}
+
+function handleMermaidViewerPointerDown(e) {
+  if (mermaidViewerDrag) return
+  if (e.pointerType === 'mouse' && e.button !== 0) return
+
+  mermaidViewerDrag = {
+    pointerId: e.pointerId,
+    lastX: e.clientX,
+    lastY: e.clientY,
+    distance: 0
+  }
+  mermaidViewer.panning = true
+  try {
+    e.currentTarget.setPointerCapture(e.pointerId)
+  } catch (err) {
+    /* 指针已被释放时忽略 */
+  }
+}
+
+function handleMermaidViewerPointerMove(e) {
+  const drag = mermaidViewerDrag
+  if (!drag || e.pointerId !== drag.pointerId) return
+
+  const dx = e.clientX - drag.lastX
+  const dy = e.clientY - drag.lastY
+  if (!dx && !dy) return
+
+  drag.lastX = e.clientX
+  drag.lastY = e.clientY
+  drag.distance += Math.abs(dx) + Math.abs(dy)
+  mermaidViewer.x += dx
+  mermaidViewer.y += dy
+}
+
+function handleMermaidViewerPointerUp(e) {
+  const drag = mermaidViewerDrag
+  if (!drag || e.pointerId !== drag.pointerId) return
+
+  mermaidViewerSuppressClick = drag.distance > 4
+  mermaidViewerDrag = null
+  mermaidViewer.panning = false
+}
+
+function handleMermaidViewerClick(e) {
+  if (mermaidViewerSuppressClick) {
+    mermaidViewerSuppressClick = false
+    return
+  }
+  if (e.target.closest('.mermaid-viewer-host, .mermaid-viewer-toolbar, .mermaid-viewer-close')) return
+  closeMermaidViewer()
+}
+
+function handleMermaidViewerDblClick(e) {
+  if (e.target.closest('.mermaid-viewer-toolbar, .mermaid-viewer-close')) return
+  fitMermaidViewer()
 }
 
 function runPreviewPostRender() {
@@ -1055,6 +1302,9 @@ onUnmounted(() => {
     previewPostRenderFrame = null
   }
   window.removeEventListener('resize', mermaidResizeHandler)
+  window.removeEventListener('keydown', handleMermaidViewerKeydown, true)
+  mermaidViewerState = null
+  mermaidViewerDrag = null
 })
 
 watch(
@@ -1747,7 +1997,7 @@ watch(() => props.isPreviewMode, (isPreviewMode) => {
 
 onMounted(() => {
   initMermaid(props.isDark)
-  loadHljsTheme(props.isDark)
+  loadHljsTheme()
   window.addEventListener('blur', stopPreviewHoldScroll)
 
   window.copyCode = function(btn) {
@@ -1793,8 +2043,8 @@ onUnmounted(() => {
 })
 
 // 监听主题变化并更新 highlight.js 样式
-watch(() => props.isDark, (newVal) => {
-  loadHljsTheme(newVal)
+watch(() => props.isDark, () => {
+  loadHljsTheme()
 })
 
 defineExpose({ editorRef, splitEditorRef, toggleOutline, scrollToLine, scrollPreviewToLine, repeatPreviewSearch, handlePreviewVimKey, handlePreviewVimKeyUp })
@@ -2565,6 +2815,7 @@ defineExpose({ editorRef, splitEditorRef, toggleOutline, scrollToLine, scrollPre
 }
 
 :deep(.mermaid-wrapper) {
+  position: relative;
   margin: 1.5em 0;
   padding: 1.5em;
   background: var(--preview-bg, #fafafa);
@@ -2577,6 +2828,34 @@ defineExpose({ editorRef, splitEditorRef, toggleOutline, scrollToLine, scrollPre
   justify-content: center;
   align-items: center;
   box-shadow: var(--surface-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+:deep(.mermaid-expand-btn) {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 2;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 8px;
+  background: var(--menu-bg, #fff);
+  color: var(--text-muted, #64748b);
+  cursor: pointer;
+  opacity: 0.65;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+:deep(.mermaid-expand-btn:hover),
+:deep(.mermaid-expand-btn:focus-visible) {
+  opacity: 1;
+  color: var(--accent-indigo, #6366f1);
+  border-color: var(--accent-indigo, #6366f1);
+  box-shadow: 0 4px 12px var(--accent-glow);
+  transform: translateY(-1px);
 }
 
 :deep(.mermaid-chart) {
@@ -2605,5 +2884,161 @@ defineExpose({ editorRef, splitEditorRef, toggleOutline, scrollToLine, scrollPre
   border-radius: 8px;
   font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
   border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.mermaid-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 10500;
+  background: color-mix(in srgb, var(--preview-bg, #fafafa) 90%, transparent);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.mermaid-viewer.panning {
+  cursor: grabbing;
+}
+
+.mermaid-viewer-stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.mermaid-viewer-host {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  will-change: transform;
+}
+
+:deep(.mermaid-viewer-host svg) {
+  display: block;
+  filter: drop-shadow(0 16px 36px rgba(15, 23, 42, 0.22));
+}
+
+.mermaid-viewer-hint {
+  position: absolute;
+  top: 1.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.75rem;
+  color: var(--text-muted, #64748b);
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--menu-bg, #fff) 78%, transparent);
+  border: 1px solid var(--border-color, #e5e7eb);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.mermaid-viewer-toolbar {
+  position: absolute;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.35rem;
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--menu-bg, #fff) 88%, transparent);
+  border: 1px solid var(--border-color, #e5e7eb);
+  box-shadow: var(--overlay-shadow, 0 12px 32px -16px rgba(15, 23, 42, 0.35));
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.mv-btn {
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: var(--text-primary, #111827);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mv-btn svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.mv-btn:hover {
+  background: var(--menu-hover, rgba(15, 23, 42, 0.06));
+  color: var(--accent-indigo, #6366f1);
+}
+
+.mv-zoom-label {
+  min-width: 3.2rem;
+  height: 2rem;
+  padding: 0 0.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: var(--text-muted, #64748b);
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mv-zoom-label:hover {
+  background: var(--menu-hover, rgba(15, 23, 42, 0.06));
+  color: var(--text-primary, #111827);
+}
+
+.mv-divider {
+  width: 1px;
+  height: 1.1rem;
+  margin: 0 0.2rem;
+  background: var(--border-color, #e5e7eb);
+}
+
+.mermaid-viewer-close {
+  position: absolute;
+  top: 1.25rem;
+  right: 1.25rem;
+  width: 2.4rem;
+  height: 2.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-color, #e5e7eb);
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--menu-bg, #fff) 88%, transparent);
+  color: var(--text-primary, #111827);
+  cursor: pointer;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: var(--overlay-shadow, 0 12px 32px -16px rgba(15, 23, 42, 0.35));
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mermaid-viewer-close svg {
+  width: 1.1rem;
+  height: 1.1rem;
+}
+
+.mermaid-viewer-close:hover {
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.45);
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.22);
+  transform: translateY(-1px);
 }
 </style>
